@@ -426,13 +426,25 @@ function playFlip(on, tier) {
   else blip(A, { freq:587, type:"square", t0:0, dur:0.05, gain:0.05 });
 }
 
-function Pill({ label, value, color, onAdd }) {
+function BalanceCard({ label, value, color, icon, onAdd }) {
   return (
-    <div style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(0,0,0,.32)", border:`1px solid ${color}66`, borderRadius:999, padding:"4px 4px 4px 10px" }}>
-      <span style={{ width:9, height:9, borderRadius:"50%", background:color, boxShadow:`0 0 8px ${color}` }}/>
-      <span style={{ fontSize:10, color:C.sub }}>{label}</span>
-      <span style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff", minWidth:34, textAlign:"right" }}>{fmt(value)}</span>
-      <button onClick={onAdd} aria-label="チャージ" style={{ width:22, height:22, borderRadius:"50%", border:"none", cursor:"pointer", background:`linear-gradient(135deg, ${color}, ${color}bb)`, color:"#fff", fontWeight:900, fontSize:15, lineHeight:1, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+    <div style={{ display:"flex", alignItems:"center", gap:5, background:"rgba(255,255,255,.1)", border:`1px solid ${color}66`, borderRadius:11, padding:"3px 4px 3px 6px", minWidth:120 }}>
+      <span style={{ width:20, height:20, flex:"0 0 20px", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:900, color:"#3a2a00", background:`radial-gradient(circle at 35% 30%, #fff, ${color} 72%)`, boxShadow:`0 0 6px ${color}88` }}>{icon}</span>
+      <div style={{ flex:1, lineHeight:1.05, minWidth:0 }}>
+        <div style={{ fontSize:8, color:C.sub, whiteSpace:"nowrap" }}>{label}</div>
+        <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff", fontVariantNumeric:"tabular-nums" }}>{fmt(value)}</div>
+      </div>
+      <button onClick={onAdd} aria-label={label+"を追加"} style={{ width:20, height:20, flex:"0 0 20px", borderRadius:"50%", border:"none", cursor:"pointer", background:"linear-gradient(135deg,#ff6fae,#e0488a)", color:"#fff", fontWeight:900, fontSize:14, lineHeight:1, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+    </div>
+  );
+}
+function ToggleRow({ label, on, onToggle }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"11px 0" }}>
+      <span style={{ fontSize:14, color:C.txt }}>{label}</span>
+      <button onClick={onToggle} aria-label={label+"の切り替え"} style={{ width:54, height:28, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: on?"linear-gradient(90deg,#B06CFF,#F3C969)":"rgba(255,255,255,.18)" }}>
+        <span style={{ position:"absolute", top:3, left: on?29:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s ease", boxShadow:"0 1px 3px #0006" }}/>
+      </button>
     </div>
   );
 }
@@ -570,28 +582,32 @@ export default function App() {
       <style dangerouslySetInnerHTML={{ __html: css }}/>
       <div style={{ ...shell, paddingBottom: `calc(${NAV_H + 14}px + env(safe-area-inset-bottom))`, fontFamily:FONT_UI, color:C.txt }}>
 
-        <div style={{ position:"sticky", top:0, zIndex:8, padding:"calc(10px + env(safe-area-inset-top)) 12px 10px", background:"rgba(16,8,30,.82)", backdropFilter:"blur(6px)", borderBottom:`1px solid ${C.gold}33` }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <button onClick={() => setPhase("start")} aria-label="スタート画面へ" style={{ background:"none", border:"none", color:C.gold, fontSize:24, lineHeight:1, cursor:"pointer", width:26, padding:0 }}>‹</button>
-            <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:18, letterSpacing:3, color:C.gold, textShadow:"0 0 12px #F3C96955" }}>古銭ガチャ</div>
-            <div style={{ width:26 }}/>
-          </div>
-          <div style={{ display:"flex", gap:8, justifyContent:"center", marginTop:8 }}>
-            <Pill label="コイン" value={coins} color={C.gold} onAdd={() => { setCoins(c=>c+3000); playCoin(snd); showToast("コインを3,000チャージしました"); }}/>
-            <Pill label="チケット" value={tickets} color={C.mag} onAdd={() => { setTickets(t=>t+10); playCoin(snd); showToast("チケットを10枚チャージしました"); }}/>
+        <div style={{ position:"sticky", top:0, zIndex:8, padding:"calc(8px + env(safe-area-inset-top)) 12px 8px", background:"rgba(16,8,30,.85)", backdropFilter:"blur(8px)", borderBottom:`1px solid ${C.gold}33` }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+            <button onClick={() => setPhase("start")} aria-label="タイトルへ" style={{ background:"none", border:"none", textAlign:"left", cursor:"pointer", padding:0, flexShrink:0 }}>
+              <div style={{ display:"flex", alignItems:"flex-end", gap:4 }}>
+                <span style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:23, lineHeight:.95, color:C.gold, WebkitTextStroke:"0.6px #8E0B20", textShadow:"0 0 14px #F3C96988" }}>古銭</span>
+                <span style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:15, color:"#fff", lineHeight:1.4 }}>ガチャ</span>
+                <span style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:7, color:"#fff", background:C.vermil, borderRadius:3, padding:"1px 3px", lineHeight:1.05, textAlign:"center", marginBottom:2 }}>KOSEN<br/>GACHA</span>
+              </div>
+              <div style={{ fontSize:10, color:C.sub, marginTop:1 }}>歴史を、コレクションに。</div>
+            </button>
+            <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+              <BalanceCard label="所持コイン" value={coins} color={C.gold} icon="¥" onAdd={() => { setCoins(c=>c+3000); playCoin(snd); buzz(8); showToast("コインを3,000チャージしました"); }}/>
+              <BalanceCard label="所持チケット" value={tickets} color={C.mag} icon="🎟" onAdd={() => { setTickets(t=>t+10); playCoin(snd); buzz(8); showToast("チケットを10枚チャージしました"); }}/>
+            </div>
           </div>
         </div>
 
         {tab === "gacha" && (
           <div style={{ padding:"12px 14px 6px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", gap:8, marginBottom:10 }}>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(0,0,0,.3)", border:`1px solid ${C.gold}55`, borderRadius:999, padding:"5px 12px" }}>
-                <span style={{ fontSize:10, color:C.gold, fontWeight:700 }}>自己最高</span>
-                <span style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff" }}>{yen(best)}</span>
+            <div style={{ display:"flex", gap:8, alignItems:"stretch", marginBottom:10 }}>
+              <div style={{ flex:1, borderRadius:12, padding:"8px 12px", background:"linear-gradient(135deg,#7A2FB0,#4A1C7A)", border:`1px solid ${C.gold}55`, display:"flex", alignItems:"center" }}>
+                <span style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:14, color:"#fff", lineHeight:1.3, textShadow:"0 1px 4px #0007" }}>価値ある一枚を、<br/>その手に！</span>
               </div>
-              <div style={{ display:"inline-flex", alignItems:"center", gap:6, background:"rgba(0,0,0,.3)", border:`1px solid ${C.gold}55`, borderRadius:999, padding:"5px 12px" }}>
-                <span style={{ fontSize:10, color:C.gold, fontWeight:700 }}>本日の大当たり 残り</span>
-                <span style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff", fontVariantNumeric:"tabular-nums" }}>{hh}:{mm}:{ss}</span>
+              <div style={{ flex:"0 0 auto", borderRadius:12, padding:"6px 12px", background:"radial-gradient(circle at 50% 0%, #3a2a08, #1c1405)", border:`1px solid ${C.gold}`, textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
+                <div style={{ fontSize:10, color:C.gold, fontWeight:800 }}>♛ 本日の大当たり</div>
+                <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:15, color:"#fff", fontVariantNumeric:"tabular-nums" }}>残り {hh}:{mm}:{ss}</div>
               </div>
             </div>
 
@@ -607,26 +623,35 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ fontSize:11, color:C.sub, fontWeight:700, margin:"2px 2px 6px" }}>注目のレア古銭</div>
-            <div className="cg-scroll" style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:4 }}>
-              {featured.map((it)=>{ const r=RARITY[it.rarity]; return (
-                <div key={it.id} style={{ flex:"0 0 auto", width:104, background:"#fff", borderRadius:12, overflow:"hidden", border:`2px solid ${r.color}`, boxShadow:`0 4px 14px ${r.color}44` }}>
-                  <div style={{ display:"flex", justifyContent:"flex-end", padding:"4px 6px 0" }}><RarityBadge tier={it.rarity} small/></div>
-                  <div style={{ height:56, display:"flex", alignItems:"center", justifyContent:"center", background:r.soft, margin:"2px 0" }}><Art item={it} size={it.type==="note"?92:52}/></div>
-                  <div style={{ padding:"4px 6px 8px", textAlign:"center" }}>
-                    <div style={{ fontFamily:FONT_DISP, fontWeight:700, fontSize:10, color:C.ink, lineHeight:1.15, height:24, overflow:"hidden" }}>{it.name}</div>
-                    <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:11, color:r.color }}>{it.price==null?"応相談":yen(it.price)}</div>
-                  </div>
+            <div style={{ display:"flex", gap:8, alignItems:"flex-start", marginTop:2 }}>
+              <div style={{ position:"relative", flex:"1 1 0", minWidth:0, display:"flex", flexDirection:"column", alignItems:"center" }}>
+                <div style={{ position:"absolute", left:0, top:6, display:"flex", flexDirection:"column", gap:6, zIndex:2 }}>
+                  <span style={{ fontSize:9, fontWeight:900, color:"#fff", background:"rgba(20,12,34,.92)", border:`1px solid ${RARITY.SSR.color}`, borderRadius:8, padding:"3px 6px", lineHeight:1.2, textAlign:"center", boxShadow:`0 0 8px ${RARITY.SSR.color}66` }}>初回限定<br/>SSR確定！</span>
+                  <span style={{ fontSize:9, fontWeight:900, color:"#fff", background:"rgba(20,12,34,.92)", border:`1px solid ${RARITY.SR.color}`, borderRadius:8, padding:"3px 6px", lineHeight:1.2, textAlign:"center", boxShadow:`0 0 8px ${RARITY.SR.color}66` }}>10連で<br/>SR以上確定</span>
                 </div>
-              ); })}
+                <div style={{ position:"absolute", top:28, width:170, height:170, borderRadius:"50%", background:"radial-gradient(circle, #B06CFF44 0%, transparent 65%)", pointerEvents:"none" }}/>
+                <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:11, letterSpacing:3, color:"#fff", background:"linear-gradient(90deg,#7A4FD0,#B06CFF)", borderRadius:999, padding:"2px 14px", marginBottom:2, boxShadow:"0 2px 8px #0006", zIndex:1 }}>KOSEN GACHA</div>
+                <Machine/>
+              </div>
+              <div style={{ flex:"0 0 116px" }}>
+                <div style={{ fontSize:11, color:C.sub, fontWeight:700, marginBottom:4 }}>注目のレア古銭</div>
+                <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  {featured.filter(it=>it.price!=null).slice(0,3).map(it=>{ const r=RARITY[it.rarity]; return (
+                    <div key={it.id} style={{ display:"flex", alignItems:"center", gap:6, background:"#fff", borderRadius:10, border:`2px solid ${r.color}`, padding:"4px 5px", boxShadow:`0 2px 8px ${r.color}44` }}>
+                      <div style={{ flex:"0 0 30px", height:30, display:"flex", alignItems:"center", justifyContent:"center", background:r.soft, borderRadius:6 }}><Art item={it} size={it.type==="note"?46:26}/></div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <RarityBadge tier={it.rarity} small/>
+                        <div style={{ fontFamily:FONT_DISP, fontWeight:700, fontSize:9, color:C.ink, lineHeight:1.1, marginTop:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{it.name}</div>
+                        <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:10, color:r.color }}>{yen(it.price)}</div>
+                      </div>
+                    </div>
+                  ); })}
+                </div>
+                <button onClick={()=>setTab("book")} style={{ marginTop:6, width:"100%", background:"none", border:"none", color:C.gold, fontSize:11, fontWeight:700, cursor:"pointer", textAlign:"right" }}>一覧を見る →</button>
+              </div>
             </div>
 
-            <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", marginTop:6 }}>
-              <div style={{ position:"absolute", top:24, width:210, height:210, borderRadius:"50%", background:"radial-gradient(circle, #B06CFF44 0%, transparent 65%)", pointerEvents:"none" }}/>
-              <Machine/>
-            </div>
-
-            <div style={{ width:"100%", marginTop:2 }}>
+            <div style={{ width:"100%", marginTop:8 }}>
               <div style={{ display:"flex", justifyContent:"space-between", fontSize:11, color:C.sub, marginBottom:4 }}>
                 <span>SR以上 確定ゲージ</span><span style={{ color:C.gold, fontWeight:700 }}>あと {remain} 回</span>
               </div>
@@ -635,52 +660,38 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginTop:14 }}>
-              <button className="cg-btn cg-glow" disabled={busy} onClick={() => roll(1)} style={{ position:"relative", width:200, height:200, borderRadius:"50%", border:`4px solid ${C.gold}`, cursor:"pointer",
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginTop:12 }}>
+              <button className="cg-btn cg-glow" disabled={busy} onClick={() => roll(1)} style={{ position:"relative", width:184, height:184, borderRadius:"50%", border:`4px solid ${C.gold}`, cursor:"pointer",
                 background:"radial-gradient(circle at 50% 32%, #C57BFF 0%, #7A2FB0 58%, #4A1C7A 100%)", color:"#fff", fontFamily:FONT_DISP }}>
-                <div style={{ fontSize:38, fontWeight:800, letterSpacing:4, textShadow:"0 2px 8px #0007" }}>回す！</div>
-                <div style={{ fontFamily:FONT_UI, fontSize:12, marginTop:4, color: canSingle?"#FCE9A8":"#ffd2d2" }}>1回 鑑定 ・ チケット×1</div>
+                <div style={{ fontSize:36, fontWeight:800, letterSpacing:4, textShadow:"0 2px 8px #0007" }}>回す！</div>
+                <div style={{ fontFamily:FONT_UI, fontSize:12, marginTop:4, color: canSingle?"#FCE9A8":"#ffd2d2" }}>1回 ・ チケット×1</div>
                 <div style={{ fontFamily:FONT_UI, fontSize:10, fontWeight: canSingle?400:700, color: canSingle?"#ffffffaa":"#ff9a9a" }}>{canSingle ? "または コイン300" : "残高不足 ・ ＋でチャージ"}</div>
               </button>
-              <button className="cg-btn" disabled={busy} onClick={() => roll(10)} style={{ marginTop:14, padding:"10px 24px", borderRadius:12, border:`2px solid ${C.gold}aa`,
-                background:"rgba(0,0,0,.25)", color:C.gold, fontFamily:FONT_UI, fontWeight:900, fontSize:14, cursor:"pointer" }}>
-                10連を回す<span style={{ display:"block", fontSize:10, fontWeight:700, color: canTen?C.sub:"#ff9a9a", marginTop:1 }}>{canTen ? "チケット×10 ・ SR以上1枚確定" : "残高不足 ・ ＋でチャージ"}</span>
-              </button>
-            </div>
-
-            <div style={{ marginTop:16, borderRadius:14, padding:"12px 14px", background:"linear-gradient(135deg,#16357f,#2a63c4)", color:"#fff", border:"1px solid #ffffff33", boxShadow:"0 6px 18px rgba(0,0,0,.3)", overflow:"hidden", position:"relative" }}>
-              <div style={{ position:"absolute", right:-10, top:-10, width:70, height:70, borderRadius:"50%", background:"#ffffff22" }}/>
-              <div style={{ fontSize:11, color:"#FFD24D", fontWeight:800, letterSpacing:1 }}>期間限定ピックアップ</div>
-              <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:18 }}>江戸時代の名品 出現率UP！</div>
-            </div>
-
-            <div style={{ marginTop:14, background:"rgba(255,255,255,.06)", borderRadius:14, padding:14, border:"1px solid #ffffff1a" }}>
-              <div style={{ textAlign:"center", fontFamily:FONT_DISP, fontWeight:700, fontSize:15, marginBottom:10, color:C.txt }}>排出確率</div>
-              {rates.map(({t,pct})=>(
-                <div key={t} style={{ display:"flex", alignItems:"center", gap:10, margin:"7px 0" }}>
-                  <RarityBadge tier={t} small/>
-                  <div style={{ flex:1, height:8, background:"rgba(255,255,255,.14)", borderRadius:8, overflow:"hidden" }}><div style={{ width:`${Math.max(pct,0.6)}%`, height:"100%", background:RARITY[t].color }}/></div>
-                  <span style={{ width:46, textAlign:"right", fontWeight:700, fontSize:12, color:ACCENT[t] }}>{pct<1?pct.toFixed(1):pct.toFixed(0)}%</span>
+              <div style={{ display:"flex", alignItems:"center", gap:14, marginTop:12 }}>
+                <button className="cg-btn" disabled={busy} onClick={() => roll(10)} style={{ padding:"10px 20px", borderRadius:12, border:`2px solid ${C.gold}aa`, background:"rgba(0,0,0,.25)", color:C.gold, fontFamily:FONT_UI, fontWeight:900, fontSize:14, cursor:"pointer" }}>
+                  10連を回す<span style={{ display:"block", fontSize:10, fontWeight:700, color: canTen?C.sub:"#ff9a9a", marginTop:1 }}>{canTen ? "SR以上1枚確定" : "残高不足"}</span>
+                </button>
+                <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:11, color:C.sub }}>演出</span>
+                  <button onClick={() => setFx(v=>!v)} aria-label="演出の切り替え" style={{ width:46, height:24, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: fx?"linear-gradient(90deg,#B06CFF,#F3C969)":"rgba(255,255,255,.18)" }}>
+                    <span style={{ position:"absolute", top:3, left: fx?25:3, width:18, height:18, borderRadius:"50%", background:"#fff", transition:"left .15s ease" }}/>
+                  </button>
                 </div>
-              ))}
-              <div style={{ fontSize:10.5, color:C.sub, textAlign:"center", marginTop:10 }}>特級＝大判（鑑定不能のロマン枠）/ 10連でSR以上1枚確定 / 単発も{PITY}回でSR以上確定</div>
+              </div>
             </div>
 
-            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:22, marginTop:14, flexWrap:"wrap" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:12, color:C.sub }}>演出</span>
-                <button onClick={() => setFx(v=>!v)} aria-label="演出の切り替え" style={{ width:54, height:28, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: fx?"linear-gradient(90deg,#B06CFF,#F3C969)":"rgba(255,255,255,.18)" }}>
-                  <span style={{ position:"absolute", top:3, left: fx?29:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s ease", boxShadow:"0 1px 3px #0006" }}/>
-                </button>
-                <span style={{ fontSize:12, fontWeight:700, color: fx?C.gold:C.sub }}>{fx?"ON":"OFF"}</span>
+            <div style={{ display:"flex", gap:8, marginTop:16 }}>
+              <div style={{ flex:1, borderRadius:14, padding:"10px 12px", background:"linear-gradient(135deg,#16357f,#2a63c4)", color:"#fff", border:"1px solid #ffffff33", boxShadow:"0 6px 18px rgba(0,0,0,.3)", overflow:"hidden", position:"relative" }}>
+                <div style={{ position:"absolute", right:-10, top:-10, width:60, height:60, borderRadius:"50%", background:"#ffffff22" }}/>
+                <div style={{ fontSize:10, color:"#FFD24D", fontWeight:800 }}>期間限定ピックアップ</div>
+                <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:15, lineHeight:1.2 }}>江戸時代の名品<br/>出現率UP！</div>
               </div>
-              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                <span style={{ fontSize:12, color:C.sub }}>音 {snd?"🔊":"🔇"}</span>
-                <button onClick={() => { const v=!snd; setSnd(v); if(v) playCoin(true); }} aria-label="サウンドの切り替え" style={{ width:54, height:28, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: snd?"linear-gradient(90deg,#2E84D4,#F3C969)":"rgba(255,255,255,.18)" }}>
-                  <span style={{ position:"absolute", top:3, left: snd?29:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s ease", boxShadow:"0 1px 3px #0006" }}/>
-                </button>
-                <span style={{ fontSize:12, fontWeight:700, color: snd?C.gold:C.sub }}>{snd?"ON":"OFF"}</span>
-              </div>
+              <button onClick={()=>setTab("book")} style={{ flex:"0 0 116px", textAlign:"left", cursor:"pointer", borderRadius:14, padding:"10px 12px", background:"rgba(255,255,255,.06)", border:"1px solid #ffffff1a", color:C.txt }}>
+                <div style={{ fontSize:10, color:C.sub }}>コイン図鑑</div>
+                <div style={{ fontSize:9, color:C.sub }}>コンプリート率</div>
+                <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:22, color:C.gold, lineHeight:1.1 }}>{Math.round(obtained/ITEMS.length*100)}%</div>
+                <div style={{ height:6, background:"rgba(255,255,255,.14)", borderRadius:6, overflow:"hidden", marginTop:3 }}><div style={{ width:`${obtained/ITEMS.length*100}%`, height:"100%", background:C.gold }}/></div>
+              </button>
             </div>
           </div>
         )}
@@ -735,19 +746,76 @@ export default function App() {
           </div>
         )}
 
+        {tab === "shop" && (
+          <div style={{ padding:"16px 14px 6px" }}>
+            <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:C.gold }}>ショップ</div>
+            <div style={{ fontSize:11, color:C.sub, margin:"2px 0 14px" }}>※ デモ用です（実際の決済はありません）</div>
+            <div style={{ fontSize:12, color:C.gold, fontWeight:700, margin:"0 2px 8px" }}>コイン</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10, marginBottom:18 }}>
+              {[[3000,"お試し"],[10000,"おすすめ"],[30000,"お得"],[100000,"豪遊"]].map(([amt,tag])=>(
+                <button key={amt} onClick={()=>{ setCoins(c=>c+amt); playCoin(snd); buzz(8); showToast(`コインを${fmt(amt)}チャージしました`); }} style={{ cursor:"pointer", borderRadius:14, padding:"12px", border:`1px solid ${C.gold}55`, background:"linear-gradient(135deg,#2a2342,#140f24)", color:"#fff", textAlign:"center" }}>
+                  <div style={{ fontSize:10, color:C.gold }}>{tag}</div>
+                  <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:20 }}>+{fmt(amt)}</div>
+                  <div style={{ fontSize:10, color:C.sub }}>コイン</div>
+                </button>
+              ))}
+            </div>
+            <div style={{ fontSize:12, color:C.mag, fontWeight:700, margin:"0 2px 8px" }}>チケット</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:10 }}>
+              {[[10,"お試し"],[30,"おすすめ"],[50,"お得"],[100,"豪遊"]].map(([amt,tag])=>(
+                <button key={amt} onClick={()=>{ setTickets(t=>t+amt); playCoin(snd); buzz(8); showToast(`チケットを${amt}枚チャージしました`); }} style={{ cursor:"pointer", borderRadius:14, padding:"12px", border:`1px solid ${C.mag}66`, background:"linear-gradient(135deg,#2a2342,#140f24)", color:"#fff", textAlign:"center" }}>
+                  <div style={{ fontSize:10, color:C.mag }}>{tag}</div>
+                  <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:20 }}>+{amt}</div>
+                  <div style={{ fontSize:10, color:C.sub }}>チケット</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === "settings" && (
+          <div style={{ padding:"16px 14px 6px" }}>
+            <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:C.gold, marginBottom:12 }}>設定</div>
+            <div style={{ background:"rgba(255,255,255,.06)", borderRadius:14, padding:"4px 14px", border:"1px solid #ffffff1a" }}>
+              <ToggleRow label="演出（アニメ・紙吹雪）" on={fx} onToggle={()=>setFx(v=>!v)}/>
+              <div style={{ height:1, background:"#ffffff14" }}/>
+              <ToggleRow label={`サウンド ${snd?"🔊":"🔇"}`} on={snd} onToggle={()=>{ const v=!snd; setSnd(v); if(v) playCoin(true); }}/>
+            </div>
+
+            <div style={{ marginTop:16, background:"rgba(255,255,255,.06)", borderRadius:14, padding:14, border:"1px solid #ffffff1a" }}>
+              <div style={{ textAlign:"center", fontFamily:FONT_DISP, fontWeight:700, fontSize:15, marginBottom:10, color:C.txt }}>排出確率</div>
+              {rates.map(({t,pct})=>(
+                <div key={t} style={{ display:"flex", alignItems:"center", gap:10, margin:"7px 0" }}>
+                  <RarityBadge tier={t} small/>
+                  <div style={{ flex:1, height:8, background:"rgba(255,255,255,.14)", borderRadius:8, overflow:"hidden" }}><div style={{ width:`${Math.max(pct,0.6)}%`, height:"100%", background:RARITY[t].color }}/></div>
+                  <span style={{ width:46, textAlign:"right", fontWeight:700, fontSize:12, color:ACCENT[t] }}>{pct<1?pct.toFixed(1):pct.toFixed(0)}%</span>
+                </div>
+              ))}
+              <div style={{ fontSize:10.5, color:C.sub, textAlign:"center", marginTop:10 }}>特級＝大判（鑑定不能のロマン枠）/ 10連でSR以上1枚確定 / 単発も{PITY}回でSR以上確定</div>
+            </div>
+
+            <button onClick={resetAll} style={{ marginTop:16, width:"100%", padding:"12px", borderRadius:12, border:"1px solid #ff8fb055", background:"rgba(255,80,120,.08)", color:"#ff8fb0", fontFamily:FONT_UI, fontWeight:700, fontSize:13, cursor:"pointer" }}>データをリセット</button>
+
+            <div style={{ marginTop:16, fontSize:10.5, color:C.sub, textAlign:"center", lineHeight:1.7 }}>
+              景品データ・画像: 古銭買取専門店アンティーリンク（antylink.jp/buyinglist）<br/>
+              買取価格は2026-06-07時点のスナップショット（毎日変動）/ ローカル検証用
+            </div>
+          </div>
+        )}
+
         {toast && (
           <div style={{ position:"fixed", bottom:`calc(${NAV_H+18}px + env(safe-area-inset-bottom))`, left:"50%", transform:"translateX(-50%)", zIndex:40, background:"rgba(20,12,34,.95)", color:"#fff", border:`1px solid ${C.gold}66`, borderRadius:999, padding:"9px 18px", fontSize:12, fontWeight:700, boxShadow:"0 6px 20px rgba(0,0,0,.4)", maxWidth:"90%", textAlign:"center" }}>{toast}</div>
         )}
 
         <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:460, height:`calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom:"env(safe-area-inset-bottom)",
           background:"rgba(16,8,30,.96)", borderTop:`1px solid ${C.gold}44`, display:"flex", boxShadow:"0 -2px 16px rgba(0,0,0,.4)", zIndex:9 }}>
-          {[["gacha","ガチャ","◎"],["book","図鑑","▦"]].map(([k,label,icon])=>(
-            <button key={k} onClick={() => { if (k === "gacha" && tab === "book" && newIds.size) setNewIds(new Set()); setTab(k); }} style={{ flex:1, background:"none", border:"none", cursor:"pointer",
-              color: tab===k?C.gold:"#8a7fa6", fontFamily:FONT_UI, fontWeight: tab===k?900:600, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3 }}>
-              <span style={{ fontSize:21, lineHeight:1, position:"relative" }}>{icon}
-                {k==="book" && newIds.size>0 && <span style={{ position:"absolute", top:-6, right:-15, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#E2123E", color:"#fff", fontSize:10, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 8px #E2123E" }}>{newIds.size>99?"99+":newIds.size}</span>}
+          {[["gacha","ホーム","🏠"],["book","コレクション","🗂️"],["shop","ショップ","🛍️"],["settings","設定","⚙️"]].map(([k,label,icon])=>(
+            <button key={k} onClick={() => { if (k !== "book" && tab === "book" && newIds.size) setNewIds(new Set()); setTab(k); }} style={{ flex:1, background:"none", border:"none", cursor:"pointer",
+              color: tab===k?"#ff7ab0":"#8a7fa6", fontFamily:FONT_UI, fontWeight: tab===k?900:600, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:2 }}>
+              <span style={{ fontSize:18, lineHeight:1, position:"relative" }}>{icon}
+                {k==="book" && newIds.size>0 && <span style={{ position:"absolute", top:-6, right:-13, minWidth:15, height:15, padding:"0 4px", borderRadius:999, background:"#E2123E", color:"#fff", fontSize:9, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 8px #E2123E" }}>{newIds.size>99?"99+":newIds.size}</span>}
               </span>
-              <span style={{ fontSize:11 }}>{label}</span>
+              <span style={{ fontSize:10 }}>{label}</span>
             </button>
           ))}
         </div>
