@@ -84,6 +84,8 @@ button:focus-visible{outline:3px solid #F3C969;outline-offset:2px;border-radius:
 .cg-zoom{animation:cg-zoom .6s cubic-bezier(.2,1.5,.4,1) both}
 .cg-stamp{display:inline-block;animation:cg-stamp .55s cubic-bezier(.2,1.5,.3,1) both}
 .cg-throb{animation:cg-throb .9s ease-in-out infinite}
+@keyframes cg-flip { 0%{transform:perspective(320px) rotateY(90deg);opacity:0} 55%{opacity:1} 100%{transform:perspective(320px) rotateY(0);opacity:1} }
+.cg-cv{content-visibility:auto;contain-intrinsic-size:auto 130px}
 `;
 
 function Fallback({ item, size }) {
@@ -110,7 +112,7 @@ function Fallback({ item, size }) {
 function Art({ item, size }) {
   const [err, setErr] = useState(false);
   if (err || !item.img) return <Fallback item={item} size={size} />;
-  return <img src={item.img} alt={item.name} loading="lazy" onError={() => setErr(true)}
+  return <img src={item.img} alt={item.name} loading="lazy" decoding="async" onError={() => setErr(true)}
     style={{ maxWidth:size, maxHeight:size, width:"auto", height:"auto", objectFit:"contain", display:"block", borderRadius:4 }} />;
 }
 function RarityBadge({ tier, small }) {
@@ -232,6 +234,24 @@ function CeremonyCard({ item, comment, fx, snd, big }) {
   );
 }
 
+// 10連の結果を1枚ずつ順番にめくる演出
+function FlipGrid({ pull, fx, snd }) {
+  useEffect(() => {
+    if (!fx) return;
+    const ids = pull.map((it,i)=> setTimeout(()=> playFlip(snd, it.rarity), 120 + i*150));
+    return () => ids.forEach(clearTimeout);
+  }, [pull, fx, snd]);
+  return (
+    <div onClick={(e)=>e.stopPropagation()} className="cg-scroll" style={{ marginTop:14, display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6, width:"100%", maxWidth:360 }}>
+      {pull.map((it,i)=>(
+        <div key={i} style={{ aspectRatio:"1/1", borderRadius:8, border:`2px solid ${RARITY[it.rarity].color}`, background:RARITY[it.rarity].soft, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:3, boxShadow: TIER_ORDER.indexOf(it.rarity)<=3 ? `0 0 10px ${RARITY[it.rarity].color}` : "none", animation: fx ? `cg-flip .5s ease ${120 + i*150}ms both` : "none" }}>
+          <Art item={it} size={42}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onSkip, onAgain, onClose }) {
   if (phase !== "rolling" && phase !== "reveal") return null;
   const bt = pull.length ? pull.map(i=>TIER_ORDER.indexOf(i.rarity)).reduce((a,b)=>Math.min(a,b)) : 5;
@@ -293,15 +313,7 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onS
 
             <div onClick={(e)=>e.stopPropagation()} className={fx ? "cg-zoom" : ""}><CeremonyCard item={heroItem} comment={comment} fx={fx} snd={snd} big={single}/></div>
 
-            {pull.length > 1 && (
-              <div onClick={(e)=>e.stopPropagation()} className="cg-scroll" style={{ marginTop:14, display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6, width:"100%", maxWidth:360 }}>
-                {pull.map((it,i)=>(
-                  <div key={i} style={{ aspectRatio:"1/1", borderRadius:8, border:`2px solid ${RARITY[it.rarity].color}`, background:RARITY[it.rarity].soft, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:3, boxShadow: TIER_ORDER.indexOf(it.rarity)<=3 ? `0 0 10px ${RARITY[it.rarity].color}` : "none" }}>
-                    <Art item={it} size={42}/>
-                  </div>
-                ))}
-              </div>
-            )}
+            {pull.length > 1 && <FlipGrid pull={pull} fx={fx} snd={snd}/>}
 
             <div style={{ marginTop:16, display:"flex", gap:18, fontFamily:FONT_UI, fontSize:11, color:"#ffffffcc" }}>
               <span>自己最高額 <b style={{ color:C.gold, fontSize:13 }}>{yen(best)}</b></span>
@@ -309,7 +321,7 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onS
             </div>
 
             <div onClick={(e)=>e.stopPropagation()} style={{ marginTop:16, display:"flex", gap:10, width:"100%", maxWidth:340 }}>
-              <button className="cg-btn" onClick={()=>onAgain(1)} style={{ flex:1, fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:"#fff", border:`2px solid ${C.gold}`, background:"radial-gradient(circle at 50% 30%, #C57BFF, #7A2FB0 70%)", padding:"13px 0", borderRadius:12, boxShadow:"0 4px 0 #4A1C7A", cursor:"pointer", letterSpacing:2 }}>もう一度</button>
+              <button className="cg-btn" onClick={()=>onAgain(pull.length)} style={{ flex:1, fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:"#fff", border:`2px solid ${C.gold}`, background:"radial-gradient(circle at 50% 30%, #C57BFF, #7A2FB0 70%)", padding:"13px 0", borderRadius:12, boxShadow:"0 4px 0 #4A1C7A", cursor:"pointer", letterSpacing:2 }}>もう一度{pull.length>1 ? `（${pull.length}連）` : ""}</button>
               <button className="cg-btn" onClick={onClose} style={{ flex:"0 0 96px", fontFamily:FONT_UI, fontWeight:800, fontSize:14, color:"#fff", border:"1px solid #ffffff55", background:"rgba(255,255,255,.08)", padding:"13px 0", borderRadius:12, cursor:"pointer" }}>閉じる</button>
             </div>
             <div style={{ marginTop:10, fontFamily:FONT_UI, fontSize:11, color:"#ffffff77" }}>背景タップでも閉じます</div>
@@ -328,7 +340,7 @@ function ac() {
     return A;
   } catch { return null; }
 }
-function blip(A, { freq=440, type="triangle", t0=0, dur=0.18, gain=0.16, slideTo=null, pan=0 }) {
+function blip(A, { freq=440, type="triangle", t0=0, dur=0.18, gain=0.16, slideTo=null, pan=0 }, bag=null) {
   const t = A.currentTime + t0;
   const o = A.createOscillator(), g = A.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, t);
@@ -340,8 +352,9 @@ function blip(A, { freq=440, type="triangle", t0=0, dur=0.18, gain=0.16, slideTo
   if (pan && A.createStereoPanner) { const p = A.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
   o.connect(g); node.connect(A.destination);
   o.start(t); o.stop(t + dur + 0.02);
+  if (bag) bag.push({ src:o, gain:g });
 }
-function noise(A, { t0=0, dur=0.2, gain=0.18, hp=800 }) {
+function noise(A, { t0=0, dur=0.2, gain=0.18, hp=800 }, bag=null) {
   const t = A.currentTime + t0;
   const n = Math.max(1, Math.floor(A.sampleRate * dur));
   const buf = A.createBuffer(1, n, A.sampleRate);
@@ -351,15 +364,27 @@ function noise(A, { t0=0, dur=0.2, gain=0.18, hp=800 }) {
   const f = A.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp;
   const g = A.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   src.connect(f).connect(g).connect(A.destination); src.start(t); src.stop(t + dur);
+  if (bag) bag.push({ src, gain:g });
 }
 // 回転中のドラムロール＋上昇スイープ（高レアほど激しく）
+let rollVoices = [];
+// スキップ時などに回転音を即座にフェードして止める
+function stopRoll() {
+  const A = window.__cgAC; const now = A ? A.currentTime : 0;
+  rollVoices.forEach(({ src, gain }) => {
+    try { gain.gain.cancelScheduledValues(now); gain.gain.setValueAtTime(Math.max(0.0001, gain.gain.value), now); gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04); } catch { /* noop */ }
+    try { src.stop(now + 0.05); } catch { /* 既に停止済み */ }
+  });
+  rollVoices = [];
+}
 function playRoll(on, ms, hi) {
   if (!on) return; const A = ac(); if (!A) return;
+  rollVoices = [];
   const dur = ms/1000;
-  blip(A, { freq:180, type:"sawtooth", t0:0, dur:dur*0.96, gain:0.05, slideTo: hi?900:520 });
+  blip(A, { freq:180, type:"sawtooth", t0:0, dur:dur*0.96, gain:0.05, slideTo: hi?900:520 }, rollVoices);
   let t = 0, gap = 0.12;
-  while (t < dur - 0.05) { noise(A, { t0:t, dur:0.05, gain:0.10, hp:1200 }); t += gap; gap = Math.max(0.035, gap*0.93); }
-  if (hi) { blip(A, { freq:70, type:"sine", t0:dur*0.55, dur:0.18, gain:0.22 }); blip(A, { freq:70, type:"sine", t0:dur*0.78, dur:0.2, gain:0.26 }); }
+  while (t < dur - 0.05) { noise(A, { t0:t, dur:0.05, gain:0.10, hp:1200 }, rollVoices); t += gap; gap = Math.max(0.035, gap*0.93); }
+  if (hi) { blip(A, { freq:70, type:"sine", t0:dur*0.55, dur:0.18, gain:0.22 }, rollVoices); blip(A, { freq:70, type:"sine", t0:dur*0.78, dur:0.2, gain:0.26 }, rollVoices); }
 }
 // 開封の一撃＋ファンファーレ（レア度でスケール）
 function playReveal(tier, on) {
@@ -393,6 +418,13 @@ function playCoin(on) {
 }
 // 触覚フィードバック（対応端末のみ）
 function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch { /* vibrate 非対応 */ } }
+// 10連めくり1枚ごとの軽い効果音（レアは明るく）
+function playFlip(on, tier) {
+  if (!on) return; const A = ac(); if (!A) return;
+  const idx = TIER_ORDER.indexOf(tier);
+  if (idx <= 3) { blip(A, { freq: idx<=1?1318:idx===2?1047:880, type:"triangle", t0:0, dur:0.16, gain:0.14 }); blip(A, { freq:1568, type:"sine", t0:0.02, dur:0.22, gain:0.06 }); }
+  else blip(A, { freq:587, type:"square", t0:0, dur:0.05, gain:0.05 });
+}
 
 function Pill({ label, value, color, onAdd }) {
   return (
@@ -420,6 +452,9 @@ export default function App() {
   const [log, setLog] = useState([]);
   const [fx, setFx] = useState(() => typeof window !== "undefined" && window.matchMedia ? !window.matchMedia("(prefers-reduced-motion: reduce)").matches : true);
   const [snd, setSnd] = useState(true);
+  const [bookSort, setBookSort] = useState("rarity"); // rarity | price
+  const [bookFilter, setBookFilter] = useState("all"); // all | owned | <tier>
+  const [newIds, setNewIds] = useState(() => new Set());
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const timer = useRef(null);
@@ -431,6 +466,13 @@ export default function App() {
   const byTier = useMemo(() => { const m={MASTER:[],LEGEND:[],SSR:[],SR:[],R:[],N:[]}; ITEMS.forEach(it=>m[it.rarity].push(it)); return m; }, []);
   const rates = useMemo(() => { const av=TIER_ORDER.filter(t=>byTier[t].length); const tot=av.reduce((s,t)=>s+RARITY[t].weight,0); return av.map(t=>({t,pct:RARITY[t].weight/tot*100})); }, [byTier]);
   const sorted = useMemo(() => [...ITEMS].sort((a,b)=> TIER_ORDER.indexOf(a.rarity)-TIER_ORDER.indexOf(b.rarity) || (b.price||0)-(a.price||0)), []);
+  const bookItems = useMemo(() => {
+    let list = sorted;
+    if (bookFilter === "owned") list = list.filter(it => counts[it.id]);
+    else if (bookFilter !== "all") list = list.filter(it => it.rarity === bookFilter);
+    if (bookSort === "price") list = [...list].sort((a,b)=> (b.price==null?Infinity:b.price) - (a.price==null?Infinity:a.price));
+    return list;
+  }, [sorted, bookFilter, bookSort, counts]);
   const featured = useMemo(() => {
     const ms = ITEMS.filter(i=>i.rarity==="MASTER").slice(0,3);
     const pr = ITEMS.filter(i=>i.price!=null).sort((a,b)=>b.price-a.price).slice(0,6);
@@ -442,7 +484,7 @@ export default function App() {
 
   const showToast = (m) => { setToast(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(""),1600); };
   const busy = phase === "rolling" || phase === "reveal";
-  const runFinish = () => { const f = finishRef.current; if (!f) return; finishRef.current = null; clearTimeout(timer.current); f(); };
+  const runFinish = () => { const f = finishRef.current; if (!f) return; finishRef.current = null; clearTimeout(timer.current); stopRoll(); f(); };
   const skipRoll = () => { if (phase === "rolling") runFinish(); };
 
   const doRoll = (n) => {
@@ -468,9 +510,11 @@ export default function App() {
     const heroItem = res.reduce((a,b)=> TIER_ORDER.indexOf(b.rarity) < TIER_ORDER.indexOf(a.rarity) ? b : a);
     const batchBest = res.reduce((m,it)=> (it.price||0) > m ? (it.price||0) : m, 0);
     const masterHit = res.some(it=>it.rarity==="MASTER");
+    const fresh = [...new Set(res.filter(it => !counts[it.id]).map(it => it.id))];
 
     const finish = () => {
       setCounts(prev => { const x={...prev}; res.forEach(it=>x[it.id]=(x[it.id]||0)+1); return x; });
+      if (fresh.length) setNewIds(s => { const n = new Set(s); fresh.forEach(id => n.add(id)); return n; });
       setComment(appraise(TIER_ORDER[bt]));
       setRecord(masterHit || batchBest > best);
       setBest(v => Math.max(v, batchBest));
@@ -481,7 +525,7 @@ export default function App() {
     finishRef.current = finish;
     if (fx) {
       setPhase("rolling");
-      const suspense = bt<=1 ? 2600 : bt<=2 ? 2100 : bt<=3 ? 1800 : 1500;  // 高レアほど長くじらす
+      const suspense = bt<=1 ? 2800 : bt<=2 ? 2200 : bt<=3 ? 1700 : 1150;  // 高レアほど長くじらす（通常はテンポ良く）
       buzz(18); playRoll(snd, suspense, bt<=2);
       clearTimeout(timer.current); timer.current = setTimeout(runFinish, suspense);
     } else { finishRef.current = null; finish(); }
@@ -489,7 +533,7 @@ export default function App() {
   const roll = (n) => { if (!busy) doRoll(n); };
   const again = (n) => { setPull([]); setPhase("home"); doRoll(n); };
   const closeReveal = () => { setPull([]); setPhase("home"); };
-  const resetAll = () => { setCounts({}); setBest(0); setTotal(0); setLog([]); setPity(0); setPull([]); setPhase("home"); };
+  const resetAll = () => { setCounts({}); setBest(0); setTotal(0); setLog([]); setPity(0); setPull([]); setNewIds(new Set()); setPhase("home"); };
 
   const obtained = Object.keys(counts).length;
   const remain = PITY - pity;
@@ -643,17 +687,32 @@ export default function App() {
 
         {tab === "book" && (
           <div style={{ padding:"14px 14px 6px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:10, borderBottom:`2px solid ${C.gold}33`, paddingBottom:6 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:8, borderBottom:`2px solid ${C.gold}33`, paddingBottom:6 }}>
               <span style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:C.gold }}>図鑑</span>
               <span style={{ fontSize:13, color:C.sub }}>収集 {obtained} / {ITEMS.length}
                 <button onClick={resetAll} style={{ marginLeft:12, fontSize:11, color:"#ff8fb0", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}>リセット</button>
               </span>
             </div>
+            <div className="cg-scroll" style={{ display:"flex", gap:6, overflowX:"auto", paddingBottom:6 }}>
+              {[["all","すべて"],["owned","入手済み"],...TIER_ORDER.map(t=>[t, RARITY[t].en])].map(([key,label])=>(
+                <button key={key} onClick={()=>setBookFilter(key)} style={{ flex:"0 0 auto", fontFamily:FONT_UI, fontWeight:800, fontSize:11, padding:"5px 11px", borderRadius:999, cursor:"pointer", whiteSpace:"nowrap",
+                  border:`1px solid ${bookFilter===key?C.gold:"#ffffff33"}`, background: bookFilter===key?"rgba(243,201,105,.18)":"rgba(255,255,255,.05)", color: bookFilter===key?C.gold:C.sub }}>{label}</button>
+              ))}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, margin:"4px 2px 10px" }}>
+              <span style={{ fontSize:11, color:C.sub }}>並び替え</span>
+              {[["rarity","レア度順"],["price","価格順"]].map(([key,label])=>(
+                <button key={key} onClick={()=>setBookSort(key)} style={{ fontFamily:FONT_UI, fontWeight:700, fontSize:11, padding:"4px 10px", borderRadius:999, cursor:"pointer", border:"none",
+                  background: bookSort===key?"linear-gradient(90deg,#B06CFF,#F3C969)":"rgba(255,255,255,.08)", color: bookSort===key?"#1a1030":C.sub }}>{label}</button>
+              ))}
+              <span style={{ marginLeft:"auto", fontSize:11, color:C.sub }}>{bookItems.length}件</span>
+            </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:9 }}>
-              {sorted.map(it=>{
-                const have = counts[it.id]||0; const r = RARITY[it.rarity];
+              {bookItems.map(it=>{
+                const have = counts[it.id]||0; const r = RARITY[it.rarity]; const isNew = newIds.has(it.id);
                 return (
-                  <div key={it.id} className="cg-item" style={{ position:"relative", borderRadius:12, padding:"10px 6px 8px", textAlign:"center", background: have?"#fff":"rgba(255,255,255,.06)", border:`2px solid ${have?r.color:"#ffffff22"}`, opacity: have?1:0.85, boxShadow: have && TIER_ORDER.indexOf(it.rarity)<=2 ? `0 0 12px ${r.color}66` : "none" }}>
+                  <div key={it.id} className="cg-item cg-cv" style={{ position:"relative", borderRadius:12, padding:"10px 6px 8px", textAlign:"center", background: have?"#fff":"rgba(255,255,255,.06)", border:`2px solid ${have?r.color:"#ffffff22"}`, opacity: have?1:0.85, boxShadow: have && TIER_ORDER.indexOf(it.rarity)<=2 ? `0 0 12px ${r.color}66` : "none" }}>
+                    {isNew && <span style={{ position:"absolute", top:4, left:6, fontSize:9, fontWeight:900, color:"#fff", background:"#E2123E", borderRadius:4, padding:"1px 5px", letterSpacing:.5, boxShadow:"0 0 8px #E2123E99" }}>NEW</span>}
                     {have>1 && <span style={{ position:"absolute", top:4, right:6, fontSize:11, fontWeight:900, color:"#fff", background:C.ink, borderRadius:999, padding:"0 7px" }}>×{have}</span>}
                     <div style={{ display:"flex", justifyContent:"center", alignItems:"center", height:58 }}>
                       {have ? <Art item={it} size={it.type==="note"?86:54}/> :
@@ -667,6 +726,7 @@ export default function App() {
                   </div>
                 );
               })}
+              {bookItems.length === 0 && <div style={{ gridColumn:"1 / -1", textAlign:"center", color:C.sub, fontSize:12, padding:"22px 0" }}>該当する古銭がありません</div>}
             </div>
             <div style={{ marginTop:16, fontSize:10.5, color:C.sub, textAlign:"center", lineHeight:1.7 }}>
               景品データ・画像: 古銭買取専門店アンティーリンク（antylink.jp/buyinglist）<br/>
@@ -682,9 +742,11 @@ export default function App() {
         <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:460, height:`calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom:"env(safe-area-inset-bottom)",
           background:"rgba(16,8,30,.96)", borderTop:`1px solid ${C.gold}44`, display:"flex", boxShadow:"0 -2px 16px rgba(0,0,0,.4)", zIndex:9 }}>
           {[["gacha","ガチャ","◎"],["book","図鑑","▦"]].map(([k,label,icon])=>(
-            <button key={k} onClick={() => setTab(k)} style={{ flex:1, background:"none", border:"none", cursor:"pointer",
+            <button key={k} onClick={() => { if (k === "gacha" && tab === "book" && newIds.size) setNewIds(new Set()); setTab(k); }} style={{ flex:1, background:"none", border:"none", cursor:"pointer",
               color: tab===k?C.gold:"#8a7fa6", fontFamily:FONT_UI, fontWeight: tab===k?900:600, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3 }}>
-              <span style={{ fontSize:21, lineHeight:1 }}>{icon}</span>
+              <span style={{ fontSize:21, lineHeight:1, position:"relative" }}>{icon}
+                {k==="book" && newIds.size>0 && <span style={{ position:"absolute", top:-6, right:-15, minWidth:16, height:16, padding:"0 4px", borderRadius:999, background:"#E2123E", color:"#fff", fontSize:10, fontWeight:900, display:"flex", alignItems:"center", justifyContent:"center", boxShadow:"0 0 8px #E2123E" }}>{newIds.size>99?"99+":newIds.size}</span>}
+              </span>
               <span style={{ fontSize:11 }}>{label}</span>
             </button>
           ))}
