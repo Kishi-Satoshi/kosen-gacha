@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages
+
+# main への push で自動ビルド＆公開（＝変更が入ったら自動デプロイ）。
+# 手動実行もできるよう workflow_dispatch を併用。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# GITHUB_TOKEN に Pages 公開に必要な権限を付与
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行を1つに絞る（古い公開ジョブはキャンセル）
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build
+        run: npm run build
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          # Pages 未設定でも初回に自動で有効化する
+          enablement: true
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

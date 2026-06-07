@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 
 /**
  * 古銭ガチャ — 鑑定ショー版（ブース / 1回の鑑定ドラマが主役・実データ）
@@ -142,12 +142,17 @@ function Rays({ color }) {
   );
 }
 function Confetti({ rainbow }) {
-  const cols = rainbow ? ["#FFD24D","#FF5DA2","#5DE1FF","#7CFF8A","#E2123E","#D9A521"] : ["#FFD24D","#F2C04B","#FFE9A8","#D9A521"];
-  const N = rainbow ? 46 : 26;
+  // Math.random() を render 中に呼ばないよう、初回マウント時に一度だけ生成する
+  const [pieces] = useState(() => {
+    const cols = rainbow ? ["#FFD24D","#FF5DA2","#5DE1FF","#7CFF8A","#E2123E","#D9A521"] : ["#FFD24D","#F2C04B","#FFE9A8","#D9A521"];
+    const N = rainbow ? 46 : 26;
+    return Array.from({length:N}).map((_,i)=>({ left:Math.random()*100, dur:2.0+Math.random()*1.8, delay:Math.random()*0.6, w:6+Math.random()*7, col:cols[i%cols.length] }));
+  });
   return (
     <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none" }}>
-      {Array.from({length:N}).map((_,i)=>{ const left=Math.random()*100, dur=2.0+Math.random()*1.8, delay=Math.random()*0.6, w=6+Math.random()*7, col=cols[i%cols.length];
-        return <span key={i} style={{ position:"absolute", top:"-6%", left:left+"%", width:w, height:w*1.7, background:col, borderRadius:2, animation:`cg-fall ${dur}s linear ${delay}s infinite` }}/>; })}
+      {pieces.map((p,i)=>(
+        <span key={i} style={{ position:"absolute", top:"-6%", left:p.left+"%", width:p.w, height:p.w*1.7, background:p.col, borderRadius:2, animation:`cg-fall ${p.dur}s linear ${p.delay}s infinite` }}/>
+      ))}
     </div>
   );
 }
@@ -276,7 +281,18 @@ function playWin(tier, on) {
     seq.forEach((f)=>{ const o=A.createOscillator(), g=A.createGain(); o.type="triangle"; o.frequency.value=f;
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.16,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
       o.connect(g).connect(A.destination); o.start(t); o.stop(t+0.22); t+=0.1; });
-  } catch (e) {}
+  } catch { /* AudioContext 非対応環境では無音 */ }
+}
+
+function Pill({ label, value, color, onAdd }) {
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(0,0,0,.32)", border:`1px solid ${color}66`, borderRadius:999, padding:"4px 4px 4px 10px" }}>
+      <span style={{ width:9, height:9, borderRadius:"50%", background:color, boxShadow:`0 0 8px ${color}` }}/>
+      <span style={{ fontSize:10, color:C.sub }}>{label}</span>
+      <span style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff", minWidth:34, textAlign:"right" }}>{fmt(value)}</span>
+      <button onClick={onAdd} aria-label="チャージ" style={{ width:22, height:22, borderRadius:"50%", border:"none", cursor:"pointer", background:`linear-gradient(135deg, ${color}, ${color}bb)`, color:"#fff", fontWeight:900, fontSize:15, lineHeight:1, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
+    </div>
+  );
 }
 
 export default function App() {
@@ -294,7 +310,7 @@ export default function App() {
   const [log, setLog] = useState([]);
   const [fx, setFx] = useState(true);
   const [toast, setToast] = useState("");
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const timer = useRef(null);
   const toastT = useRef(null);
 
@@ -383,14 +399,6 @@ export default function App() {
   }
 
   const NAV_H = 64;
-  const Pill = ({ label, value, color, onAdd }) => (
-    <div style={{ display:"flex", alignItems:"center", gap:6, background:"rgba(0,0,0,.32)", border:`1px solid ${color}66`, borderRadius:999, padding:"4px 4px 4px 10px" }}>
-      <span style={{ width:9, height:9, borderRadius:"50%", background:color, boxShadow:`0 0 8px ${color}` }}/>
-      <span style={{ fontSize:10, color:C.sub }}>{label}</span>
-      <span style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff", minWidth:34, textAlign:"right" }}>{fmt(value)}</span>
-      <button onClick={onAdd} aria-label="チャージ" style={{ width:22, height:22, borderRadius:"50%", border:"none", cursor:"pointer", background:`linear-gradient(135deg, ${color}, ${color}bb)`, color:"#fff", fontWeight:900, fontSize:15, lineHeight:1, display:"flex", alignItems:"center", justifyContent:"center" }}>+</button>
-    </div>
-  );
 
   return (
     <div style={{ minHeight:"100vh", background:"#0b0716", display:"flex", justifyContent:"center" }}>
