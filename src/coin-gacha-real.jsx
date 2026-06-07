@@ -570,7 +570,7 @@ export default function App() {
       <style dangerouslySetInnerHTML={{ __html: css }}/>
       <div style={{ ...shell, paddingBottom: `calc(${NAV_H + 14}px + env(safe-area-inset-bottom))`, fontFamily:FONT_UI, color:C.txt }}>
 
-        <div style={{ position:"sticky", top:0, zIndex:8, padding:"10px 12px", background:"rgba(16,8,30,.82)", backdropFilter:"blur(6px)", borderBottom:`1px solid ${C.gold}33` }}>
+        <div style={{ position:"sticky", top:0, zIndex:8, padding:"calc(10px + env(safe-area-inset-top)) 12px 10px", background:"rgba(16,8,30,.82)", backdropFilter:"blur(6px)", borderBottom:`1px solid ${C.gold}33` }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <button onClick={() => setPhase("start")} aria-label="スタート画面へ" style={{ background:"none", border:"none", color:C.gold, fontSize:24, lineHeight:1, cursor:"pointer", width:26, padding:0 }}>‹</button>
             <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:18, letterSpacing:3, color:C.gold, textShadow:"0 0 12px #F3C96955" }}>古銭ガチャ</div>
