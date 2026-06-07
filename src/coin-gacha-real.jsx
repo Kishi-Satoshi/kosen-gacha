@@ -69,6 +69,16 @@ const css = `
 .cg-item{transition:transform .12s ease}
 .cg-item:active{transform:scale(.97)}
 .cg-scroll::-webkit-scrollbar{height:0;width:0}
+@keyframes cg-coin { 0%{transform:translateY(-12%) rotate(0);opacity:1} 100%{transform:translateY(122vh) rotate(540deg);opacity:.85} }
+@keyframes cg-zoom { 0%{transform:scale(.2) rotate(-8deg);opacity:0} 55%{transform:scale(1.14) rotate(2deg);opacity:1} 75%{transform:scale(.97)} 100%{transform:scale(1) rotate(0)} }
+@keyframes cg-stamp { 0%{transform:scale(2.6) rotate(-18deg);opacity:0} 55%{transform:scale(.84) rotate(5deg);opacity:1} 78%{transform:scale(1.08) rotate(-3deg)} 100%{transform:scale(1) rotate(-6deg)} }
+@keyframes cg-quake { 0%,100%{transform:translate(0,0)} 10%{transform:translate(-7px,4px)} 20%{transform:translate(6px,-5px)} 30%{transform:translate(-8px,-3px)} 40%{transform:translate(7px,5px)} 50%{transform:translate(-5px,6px)} 60%{transform:translate(6px,-4px)} 70%{transform:translate(-6px,3px)} 80%{transform:translate(4px,-6px)} 90%{transform:translate(-3px,4px)} }
+@keyframes cg-vig { 0%,100%{opacity:.5} 50%{opacity:1} }
+@keyframes cg-throb { 0%,100%{transform:scale(1);filter:brightness(1)} 50%{transform:scale(1.06);filter:brightness(1.3)} }
+.cg-quake{animation:cg-quake .5s linear infinite}
+.cg-zoom{animation:cg-zoom .6s cubic-bezier(.2,1.5,.4,1) both}
+.cg-stamp{display:inline-block;animation:cg-stamp .55s cubic-bezier(.2,1.5,.3,1) both}
+.cg-throb{animation:cg-throb .9s ease-in-out infinite}
 `;
 
 function Fallback({ item, size }) {
@@ -156,19 +166,39 @@ function Confetti({ rainbow }) {
     </div>
   );
 }
-function CountUp({ to, dur }) {
+function CoinRain() {
+  const [coins] = useState(() => Array.from({length:28}).map(()=>({
+    left: Math.random()*100, dur: 1.8+Math.random()*1.6, delay: Math.random()*0.7, size: 16+Math.random()*16,
+  })));
+  return (
+    <div style={{ position:"absolute", inset:0, overflow:"hidden", pointerEvents:"none" }}>
+      {coins.map((c,i)=>(
+        <span key={i} style={{ position:"absolute", top:"-8%", left:c.left+"%", width:c.size, height:c.size, borderRadius:"50%",
+          background:"radial-gradient(circle at 36% 30%, #FFF6CF, #F3C969 46%, #9c7616 100%)", border:"1px solid #7d5e10",
+          boxShadow:"0 0 8px #F3C96999", display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize:c.size*0.62, fontWeight:900, color:"#7d5e10", animation:`cg-coin ${c.dur}s linear ${c.delay}s infinite` }}>¥</span>
+      ))}
+    </div>
+  );
+}
+function CountUp({ to, dur, snd }) {
   const [v, setV] = useState(0);
   useEffect(() => {
-    let raf; const t0 = performance.now(); const D = dur || 1200;
-    const tick = (now) => { const p = Math.min(1, (now - t0) / D); const e = 1 - Math.pow(1 - p, 3); setV(Math.round(to * e)); if (p < 1) raf = requestAnimationFrame(tick); };
+    let raf; const t0 = performance.now(); const D = dur || 1200; let last = 0, n = 0;
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / D); const e = 1 - Math.pow(1 - p, 3); setV(Math.round(to * e));
+      if (p < 1 && now - last > 55) { playTick(snd, n++); last = now; }
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
     raf = requestAnimationFrame(tick); return () => cancelAnimationFrame(raf);
-  }, [to, dur]);
+  }, [to, dur, snd]);
   return <>{yen(v)}</>;
 }
 
-function CeremonyCard({ item, comment, fx, big }) {
+function CeremonyCard({ item, comment, fx, snd, big }) {
   const accent = ACCENT[item.rarity];
   const master = item.rarity === "MASTER";
+  const idx = TIER_ORDER.indexOf(item.rarity);
   const dur = item.price == null ? 0 : Math.min(2200, Math.max(800, 600 + Math.round(Math.log10(Math.max(10, item.price)) * 330)));
   const W = big ? 320 : 250;
   return (
@@ -188,35 +218,41 @@ function CeremonyCard({ item, comment, fx, big }) {
       <div style={{ marginTop:10, fontFamily:FONT_DISP, fontWeight:800, fontSize: big?18:15, color:"#fff", lineHeight:1.25 }}>{item.name}</div>
       <div style={{ fontSize:11, color:"#ffffff99", marginTop:2 }}>{item.type==="coin"?"硬貨":"紙幣"} ・ {item.category}</div>
       <div style={{ marginTop:12, fontFamily:FONT_UI, fontSize:11, color:accent, letterSpacing:4 }}>鑑定額</div>
-      <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize: big?40:30, color:accent, textShadow:`0 0 22px ${accent}88`, fontVariantNumeric:"tabular-nums", lineHeight:1.1 }}>
+      <div className={idx<=2 ? "cg-throb" : undefined} style={{ fontFamily:FONT_UI, fontWeight:900, fontSize: big?40:30, color:accent, textShadow:`0 0 22px ${accent}88`, fontVariantNumeric:"tabular-nums", lineHeight:1.1 }}>
         {item.price == null
           ? <span style={{ fontSize: big?28:22 }}>応相談<span style={{ display:"block", fontSize:12, color:"#ffffffcc", marginTop:2, letterSpacing:2 }}>― プライスレス ―</span></span>
-          : (fx ? <CountUp to={item.price} dur={dur}/> : yen(item.price))}
+          : (fx ? <CountUp to={item.price} dur={dur} snd={snd}/> : yen(item.price))}
       </div>
     </div>
   );
 }
 
-function RevealOverlay({ phase, pull, comment, record, best, total, fx, onAgain, onClose }) {
+function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onAgain, onClose }) {
   if (phase !== "rolling" && phase !== "reveal") return null;
   const bt = pull.length ? pull.map(i=>TIER_ORDER.indexOf(i.rarity)).reduce((a,b)=>Math.min(a,b)) : 5;
   const tier = TIER_ORDER[bt];
   const accent = ACCENT[tier];
-  const hi = bt <= 2;            // SSR以上でフラッシュ＋紙吹雪
+  const hi = bt <= 2;            // SSR以上でフラッシュ＋紙吹雪＋コイン雨
   const rainbow = bt <= 1;       // 特級・LEGENDは虹
   const heroItem = pull.length ? pull.reduce((a,b)=> TIER_ORDER.indexOf(b.rarity) < TIER_ORDER.indexOf(a.rarity) ? b : a) : null;
   const single = pull.length === 1;
+  const stampLabel = heroItem && heroItem.rarity==="MASTER" ? "特級" : heroItem && heroItem.rarity==="LEGEND" ? "LEGEND" : null;
   return (
     <div style={{ position:"fixed", top:0, bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:460, zIndex:50,
       background:"radial-gradient(120% 80% at 50% 40%, #1a0f2e 0%, #0b0716 80%)", overflow:"hidden" }}>
+      {fx && rainbow && <div style={{ position:"absolute", inset:"-30%", background:"conic-gradient(from 0deg,#ff004c,#ff9a00,#faff00,#33ff5e,#00e5ff,#7a5cff,#ff00d4,#ff004c)", opacity:.16, animation:"cg-spin 9s linear infinite", pointerEvents:"none" }}/>}
       {fx && <Rays color={accent}/>}
+      {fx && hi && <div style={{ position:"absolute", inset:0, boxShadow:`inset 0 0 120px 30px ${accent}99, inset 0 0 40px 6px ${accent}`, pointerEvents:"none", animation:"cg-vig 1.1s ease-in-out infinite", zIndex:2 }}/>}
 
       {phase === "rolling" && (
-        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
           <div style={{ textAlign:"center" }}>
-            <div style={{ position:"relative", width:150, height:150, margin:"0 auto" }}>
-              <div style={{ position:"absolute", inset:-12, borderRadius:"50%", background:`radial-gradient(circle at 50% 42%, ${accent}, ${accent}00 70%)`, filter:"blur(8px)", animation:"cg-pulse 1.1s ease-in-out infinite" }}/>
-              <svg viewBox="0 0 100 100" width="150" height="150" style={{ position:"relative", animation:"cg-bob 1.1s ease-in-out infinite" }}>
+            <div className={hi ? "cg-quake" : ""} style={{ position:"relative", width:170, height:190, margin:"0 auto" }}>
+              {[0,0.4,0.8].map((d,i)=>(
+                <div key={i} style={{ position:"absolute", top:20, left:10, right:10, bottom:20, borderRadius:"50%", border:`3px solid ${accent}`, animation:`cg-ring 1.2s ease-out ${d}s infinite`, pointerEvents:"none" }}/>
+              ))}
+              <div style={{ position:"absolute", top:14, left:10, right:10, bottom:14, borderRadius:"50%", background:`radial-gradient(circle at 50% 42%, ${accent}, ${accent}00 70%)`, filter:"blur(8px)", animation:"cg-pulse 1s ease-in-out infinite" }}/>
+              <svg viewBox="0 0 100 100" width="150" height="150" style={{ position:"relative", margin:"20px auto 0", display:"block", animation: hi?"cg-throb .5s ease-in-out infinite":"cg-bob 1.1s ease-in-out infinite" }}>
                 <defs><clipPath id="cgcap2"><circle cx="50" cy="50" r="40"/></clipPath></defs>
                 <circle cx="50" cy="50" r="40" fill="#f5f5f5"/>
                 <rect x="10" y="10" width="80" height="40" fill={accent} clipPath="url(#cgcap2)"/>
@@ -225,16 +261,23 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, onAgain,
                 <circle cx="50" cy="50" r="9" fill="#fff" stroke={accent} strokeWidth="3"/>
               </svg>
             </div>
-            <div style={{ marginTop:18, fontFamily:FONT_DISP, fontWeight:800, fontSize:22, color:"#fff", letterSpacing:5, textShadow:`0 0 18px ${accent}`, animation: hi?"cg-blink .5s ease-in-out infinite":"none" }}>{hi ? "鑑定中……！？" : "鑑定中……"}</div>
+            <div style={{ marginTop:14, fontFamily:FONT_DISP, fontWeight:800, fontSize:22, color:"#fff", letterSpacing:5, textShadow:`0 0 18px ${accent}`, animation: hi?"cg-blink .35s ease-in-out infinite":"none" }}>{rainbow ? "な…なんと…！！" : hi ? "鑑定中……！？" : "鑑定中……"}</div>
+            {hi && <div style={{ marginTop:6, fontFamily:FONT_UI, fontSize:12, color:accent, fontWeight:700, letterSpacing:2 }}>大物の予感…！</div>}
           </div>
         </div>
       )}
 
       {phase === "reveal" && (
         <div style={{ position:"absolute", inset:0, overflowY:"auto" }}>
-          {fx && hi && <div style={{ position:"fixed", inset:0, background:"#fff", animation:"cg-flash .55s ease-out forwards", pointerEvents:"none", zIndex:2 }}/>}
-          {fx && hi && <Confetti rainbow={rainbow}/>}
-          <div onClick={onClose} style={{ minHeight:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"22px 14px" }}>
+          {fx && hi && <div style={{ position:"absolute", inset:0, zIndex:5, pointerEvents:"none" }}><Confetti rainbow={rainbow}/><CoinRain/></div>}
+          {fx && stampLabel && (
+            <div style={{ position:"fixed", top:"26%", left:0, right:0, textAlign:"center", zIndex:6, pointerEvents:"none" }}>
+              <span className="cg-stamp" style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize: stampLabel==="特級"?60:48, color:accent,
+                WebkitTextStroke:`2px ${rainbow?"#ffffffcc":"#00000088"}`, textShadow:`0 0 30px ${accent}, 0 0 60px ${accent}` }}>{stampLabel}!!</span>
+            </div>
+          )}
+          {fx && hi && <div style={{ position:"fixed", inset:0, background:"#fff", animation:"cg-flash .55s ease-out forwards", pointerEvents:"none", zIndex:8 }}/>}
+          <div onClick={onClose} style={{ position:"relative", zIndex:3, minHeight:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"22px 14px" }}>
             {record && (
               <div className="cg-pop" style={{ marginBottom:10, fontFamily:FONT_DISP, fontWeight:800, fontSize:15, color:"#15110A", background:"linear-gradient(90deg,#FFE08A,#F3C969)", border:"1px solid #C9A227", borderRadius:999, padding:"5px 18px", boxShadow:"0 0 18px #F3C96988" }}>{heroItem && heroItem.rarity==="MASTER" ? "★ 特級 獲得！ ★" : "自己最高額 更新！"}</div>
             )}
@@ -242,7 +285,7 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, onAgain,
               <div style={{ marginBottom:8 }}><span style={{ fontFamily:FONT_UI, fontWeight:900, color:"#fff", fontSize:13, marginRight:8, letterSpacing:1 }}>最高レア</span><RarityBadge tier={tier}/></div>
             )}
 
-            <div onClick={(e)=>e.stopPropagation()}><CeremonyCard item={heroItem} comment={comment} fx={fx} big={single}/></div>
+            <div onClick={(e)=>e.stopPropagation()} className={fx ? "cg-zoom" : ""}><CeremonyCard item={heroItem} comment={comment} fx={fx} snd={snd} big={single}/></div>
 
             {pull.length > 1 && (
               <div onClick={(e)=>e.stopPropagation()} className="cg-scroll" style={{ marginTop:14, display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6, width:"100%", maxWidth:360 }}>
@@ -271,17 +314,76 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, onAgain,
   );
 }
 
-function playWin(tier, on) {
-  if (!on) return;
+// ── サウンド（Web Audio で合成。外部ファイル不要） ──────────────────
+function ac() {
   try {
     const A = window.__cgAC || (window.__cgAC = new (window.AudioContext || window.webkitAudioContext)());
     if (A.state === "suspended") A.resume();
-    const seq = tier==="MASTER" ? [523,659,784,1047,1319,1568] : tier==="LEGEND" ? [523,659,784,1047,1319] : tier==="SSR" ? [523,659,784,1047] : tier==="SR" ? [523,659,784] : tier==="R" ? [523,659] : [440];
-    let t = A.currentTime + 0.02;
-    seq.forEach((f)=>{ const o=A.createOscillator(), g=A.createGain(); o.type="triangle"; o.frequency.value=f;
-      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.16,t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+0.2);
-      o.connect(g).connect(A.destination); o.start(t); o.stop(t+0.22); t+=0.1; });
-  } catch { /* AudioContext 非対応環境では無音 */ }
+    return A;
+  } catch { return null; }
+}
+function blip(A, { freq=440, type="triangle", t0=0, dur=0.18, gain=0.16, slideTo=null, pan=0 }) {
+  const t = A.currentTime + t0;
+  const o = A.createOscillator(), g = A.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  let node = g;
+  if (pan && A.createStereoPanner) { const p = A.createStereoPanner(); p.pan.value = pan; g.connect(p); node = p; }
+  o.connect(g); node.connect(A.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function noise(A, { t0=0, dur=0.2, gain=0.18, hp=800 }) {
+  const t = A.currentTime + t0;
+  const n = Math.max(1, Math.floor(A.sampleRate * dur));
+  const buf = A.createBuffer(1, n, A.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i=0;i<n;i++) d[i] = (Math.random()*2-1) * (1 - i/n);
+  const src = A.createBufferSource(); src.buffer = buf;
+  const f = A.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp;
+  const g = A.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f).connect(g).connect(A.destination); src.start(t); src.stop(t + dur);
+}
+// 回転中のドラムロール＋上昇スイープ（高レアほど激しく）
+function playRoll(on, ms, hi) {
+  if (!on) return; const A = ac(); if (!A) return;
+  const dur = ms/1000;
+  blip(A, { freq:180, type:"sawtooth", t0:0, dur:dur*0.96, gain:0.05, slideTo: hi?900:520 });
+  let t = 0, gap = 0.12;
+  while (t < dur - 0.05) { noise(A, { t0:t, dur:0.05, gain:0.10, hp:1200 }); t += gap; gap = Math.max(0.035, gap*0.93); }
+  if (hi) { blip(A, { freq:70, type:"sine", t0:dur*0.55, dur:0.18, gain:0.22 }); blip(A, { freq:70, type:"sine", t0:dur*0.78, dur:0.2, gain:0.26 }); }
+}
+// 開封の一撃＋ファンファーレ（レア度でスケール）
+function playReveal(tier, on) {
+  if (!on) return; const A = ac(); if (!A) return;
+  const idx = TIER_ORDER.indexOf(tier);
+  blip(A, { freq:120, type:"sine", t0:0, dur:0.5, gain:0.34, slideTo:42 });
+  noise(A, { t0:0, dur:0.35, gain: idx<=2 ? 0.3 : 0.16, hp:500 });
+  const seq = tier==="MASTER" ? [523,659,784,1047,1319,1568,2093] :
+              tier==="LEGEND" ? [523,659,784,1047,1319,1568] :
+              tier==="SSR"    ? [523,659,784,1047,1319] :
+              tier==="SR"     ? [523,659,784,1047] :
+              tier==="R"      ? [523,659,784] : [440,554];
+  let t = 0.12;
+  seq.forEach((f,i)=>{ blip(A, { freq:f, type:"triangle", t0:t, dur:0.26, gain:0.18, pan:(i%2?0.4:-0.4) }); t += 0.092; });
+  if (idx <= 2) {
+    [1047,1319,1568,2093].forEach((f,i)=> blip(A, { freq:f, type:"sine", t0:t+0.05+i*0.03, dur:0.5, gain:0.08 }));
+    blip(A, { freq:262, type:"triangle", t0:t+0.05, dur:0.7, gain:0.1 });
+    blip(A, { freq:392, type:"triangle", t0:t+0.05, dur:0.7, gain:0.1 });
+  }
+}
+// カウントアップ中のチクチク音（音程が上がる）
+function playTick(on, i) {
+  if (!on) return; const A = ac(); if (!A) return;
+  blip(A, { freq: 880 + Math.min(36, i)*26, type:"square", t0:0, dur:0.04, gain:0.05 });
+}
+// コインのチャリン
+function playCoin(on) {
+  if (!on) return; const A = ac(); if (!A) return;
+  blip(A, { freq:1760, type:"triangle", t0:0, dur:0.12, gain:0.12, slideTo:2637 });
+  blip(A, { freq:2637, type:"sine", t0:0.04, dur:0.18, gain:0.08 });
 }
 
 function Pill({ label, value, color, onAdd }) {
@@ -309,6 +411,7 @@ export default function App() {
   const [total, setTotal] = useState(0);
   const [log, setLog] = useState([]);
   const [fx, setFx] = useState(true);
+  const [snd, setSnd] = useState(true);
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const timer = useRef(null);
@@ -362,10 +465,14 @@ export default function App() {
       setBest(v => Math.max(v, batchBest));
       setTotal(v => v + res.reduce((s,it)=>s+(it.price||0),0));
       if (TIER_ORDER.indexOf(heroItem.rarity) <= 3) setLog(L => [{ name:heroItem.name, price:heroItem.price, rarity:heroItem.rarity }, ...L].slice(0,8));
-      setPhase("reveal"); playWin(TIER_ORDER[bt], fx);
+      setPhase("reveal"); playReveal(TIER_ORDER[bt], snd);
     };
-    if (fx) { setPhase("rolling"); clearTimeout(timer.current); timer.current = setTimeout(finish, 1700); }
-    else finish();
+    if (fx) {
+      setPhase("rolling");
+      const suspense = bt<=1 ? 2600 : bt<=2 ? 2100 : bt<=3 ? 1800 : 1500;  // 高レアほど長くじらす
+      playRoll(snd, suspense, bt<=2);
+      clearTimeout(timer.current); timer.current = setTimeout(finish, suspense);
+    } else finish();
   };
   const roll = (n) => { if (!busy) doRoll(n); };
   const again = (n) => { setPull([]); setPhase("home"); doRoll(n); };
@@ -412,8 +519,8 @@ export default function App() {
             <div style={{ width:26 }}/>
           </div>
           <div style={{ display:"flex", gap:8, justifyContent:"center", marginTop:8 }}>
-            <Pill label="コイン" value={coins} color={C.gold} onAdd={() => { setCoins(c=>c+3000); showToast("コインを3,000チャージしました"); }}/>
-            <Pill label="チケット" value={tickets} color={C.mag} onAdd={() => { setTickets(t=>t+10); showToast("チケットを10枚チャージしました"); }}/>
+            <Pill label="コイン" value={coins} color={C.gold} onAdd={() => { setCoins(c=>c+3000); playCoin(snd); showToast("コインを3,000チャージしました"); }}/>
+            <Pill label="チケット" value={tickets} color={C.mag} onAdd={() => { setTickets(t=>t+10); playCoin(snd); showToast("チケットを10枚チャージしました"); }}/>
           </div>
         </div>
 
@@ -501,12 +608,21 @@ export default function App() {
               <div style={{ fontSize:10.5, color:C.sub, textAlign:"center", marginTop:10 }}>特級＝大判（鑑定不能のロマン枠）/ 10連でSR以上1枚確定 / 単発も{PITY}回でSR以上確定</div>
             </div>
 
-            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:10, marginTop:14 }}>
-              <span style={{ fontSize:12, color:C.sub }}>演出</span>
-              <button onClick={() => setFx(v=>!v)} style={{ width:54, height:28, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: fx?"linear-gradient(90deg,#B06CFF,#F3C969)":"rgba(255,255,255,.18)" }}>
-                <span style={{ position:"absolute", top:3, left: fx?29:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s ease", boxShadow:"0 1px 3px #0006" }}/>
-              </button>
-              <span style={{ fontSize:12, fontWeight:700, color: fx?C.gold:C.sub }}>{fx?"ON":"OFF"}</span>
+            <div style={{ display:"flex", justifyContent:"center", alignItems:"center", gap:22, marginTop:14, flexWrap:"wrap" }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:12, color:C.sub }}>演出</span>
+                <button onClick={() => setFx(v=>!v)} aria-label="演出の切り替え" style={{ width:54, height:28, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: fx?"linear-gradient(90deg,#B06CFF,#F3C969)":"rgba(255,255,255,.18)" }}>
+                  <span style={{ position:"absolute", top:3, left: fx?29:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s ease", boxShadow:"0 1px 3px #0006" }}/>
+                </button>
+                <span style={{ fontSize:12, fontWeight:700, color: fx?C.gold:C.sub }}>{fx?"ON":"OFF"}</span>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                <span style={{ fontSize:12, color:C.sub }}>音 {snd?"🔊":"🔇"}</span>
+                <button onClick={() => { const v=!snd; setSnd(v); if(v) playCoin(true); }} aria-label="サウンドの切り替え" style={{ width:54, height:28, borderRadius:999, border:"none", cursor:"pointer", position:"relative", background: snd?"linear-gradient(90deg,#2E84D4,#F3C969)":"rgba(255,255,255,.18)" }}>
+                  <span style={{ position:"absolute", top:3, left: snd?29:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s ease", boxShadow:"0 1px 3px #0006" }}/>
+                </button>
+                <span style={{ fontSize:12, fontWeight:700, color: snd?C.gold:C.sub }}>{snd?"ON":"OFF"}</span>
+              </div>
             </div>
           </div>
         )}
@@ -560,7 +676,7 @@ export default function App() {
           ))}
         </div>
 
-        <RevealOverlay phase={phase} pull={pull} comment={comment} record={record} best={best} total={total} fx={fx} onAgain={again} onClose={closeReveal}/>
+        <RevealOverlay phase={phase} pull={pull} comment={comment} record={record} best={best} total={total} fx={fx} snd={snd} onAgain={again} onClose={closeReveal}/>
       </div>
     </div>
   );
