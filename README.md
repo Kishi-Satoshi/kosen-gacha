@@ -1,16 +1,87 @@
-# React + Vite
+# 古銭ガチャ（鑑定ショー版）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+実在する古銭・紙幣を景品にしたガチャ風 Web アプリです。引いた一枚を「鑑定」し、**買取価格（推定価値）を査定額としてカウントアップ表示**する演出が体験の核です。展示ブースでの集客・デモ用途を想定しています。
 
-Currently, two official plugins are available:
+> ⚠️ ローカル検証・デモ用の UI 演出です。実際の課金・決済機能はありません（コイン／チケットは画面内の演出用）。
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 主な機能
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **鑑定ドラマ（1回引きが主役）** — 回す → 開封 → 鑑定書がめくれ、査定額が ¥0 からカウントアップ。鑑定士のひと言コメント付き。
+- **レア度 = 買取価格** — 価格が高いほど高レア＝低確率。`特級 > LEGEND > SSR > SR > R > N` の6段階。
+- **特級（大判）のロマン枠** — 価格が付かない大判7種を最上位「特級（応相談・プライスレス）」として収録。出ると虹＋専用演出。
+- **天井（確定ゲージ）** — 10連で SR 以上1枚確定／単発も10回で SR 以上確定。
+- **通貨ループ** — コイン／チケットを消費して回す。ヘッダーの「＋」でチャージ（デモ用）。
+- **図鑑** — 収集状況・ダブり枚数を記録。未入手は「？？？」表示。
+- **演出 ON/OFF** — フル演出と高速周回を切替。
+- **自己最高額／累計鑑定額／直近の鑑定ティッカー** — ブース向けの達成感・社会的証明。
 
-## Expanding the ESLint configuration
+景品データ（硬貨287・紙幣114・特級7＝計408点）と画像参照、スタート画面の画像はすべてアプリ本体（`src/coin-gacha-real.jsx`）に同梱済みです。
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+## 動かし方
+
+### 必要なもの
+- [Node.js](https://nodejs.org/)（LTS 版 / v18 以上）
+
+### 手順
+
+```bash
+# 依存をインストール（初回のみ）
+npm install
+
+# 開発サーバーを起動
+npm run dev
+```
+
+起動後、ターミナルに表示される `http://localhost:5173/` をブラウザで開いてください。
+
+スマホ実機で確認する場合:
+
+```bash
+npm run dev -- --host
+```
+
+表示される `Network: http://192.168.x.x:5173/` を、同じ Wi-Fi のスマホで開きます。
+
+### 本番ビルド
+
+```bash
+npm run build      # dist/ に静的ファイルを出力
+npm run preview    # ビルド結果をローカルで確認
+```
+
+---
+
+## カスタマイズ（調整ポイント）
+
+主要なパラメータは `src/coin-gacha-real.jsx` の先頭付近にまとまっています。
+
+| 項目 | 場所 | 内容 |
+| --- | --- | --- |
+| 排出確率・価格しきい値 | `RARITY` | 各レアの `weight`（確率の重み）と `min`（その階級になる買取価格の下限）。`MASTER.weight` で特級の出やすさ（既定 0.3%）を調整。 |
+| 天井回数 | `PITY` | SR 以上が確定するまでの回数（既定 10）。 |
+| 鑑定士コメント | `APPR` | レア度ごとのセリフ。増やしてもOK。 |
+| カウントアップの尺 | `CeremonyCard` 内 `dur` | 査定額アニメーションの長さ。 |
+| 消費コスト・初期残高 | `doRoll` 内 `cost` / `useState` の初期値 | 1回／10連の消費、初期コイン・チケット。 |
+
+景品データそのものを差し替えたい場合は、`ITEMS` 配列（`{ id, name, price, type, category, img, rarity }`）を編集します。`price` が `null` の品は「応相談（特級）」扱いです。
+
+---
+
+## データ出典
+
+- 景品データ・商品画像: **古銭買取専門店アンティーリンク**（<https://antylink.jp/buyinglist/>）
+- 買取価格は **2026-06-07 時点のスナップショット**です。実際の買取価格は毎日変動します。
+- 画像はアンティーリンクの商品画像 URL を参照しています（読み込みに失敗した場合は SVG で代替表示）。本アプリはローカル検証・デモ用途です。
+
+---
+
+## 技術スタック
+
+- [React](https://react.dev/) + [Vite](https://vite.dev/)
+- 外部 UI ライブラリ不使用（スタイルはインライン＋ CSS keyframes のみ）
+- 状態は React state で完結（ブラウザストレージ不使用＝リロードで初期化）
+</file_text>
