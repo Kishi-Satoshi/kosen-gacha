@@ -43,6 +43,11 @@ const appraise = (tier) => { const a = APPR[tier] || APPR.N; return a[Math.floor
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Zen+Maru+Gothic:wght@500;700;900&display=swap');
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:#0b0716;overscroll-behavior:none}
+:root{--app-h:100vh}
+@supports (height:100dvh){:root{--app-h:100dvh}}
+button:focus-visible{outline:3px solid #F3C969;outline-offset:2px;border-radius:8px}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
 @keyframes cg-knob { from{transform:rotate(0)} to{transform:rotate(-360deg)} }
 @keyframes cg-shake { 0%,100%{transform:translate(0,0) rotate(0)} 25%{transform:translate(-2px,1px) rotate(-7deg)} 50%{transform:translate(2px,-1px) rotate(6deg)} 75%{transform:translate(-1px,2px) rotate(-4deg)} }
 @keyframes cg-spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }
@@ -227,7 +232,7 @@ function CeremonyCard({ item, comment, fx, snd, big }) {
   );
 }
 
-function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onAgain, onClose }) {
+function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onSkip, onAgain, onClose }) {
   if (phase !== "rolling" && phase !== "reveal") return null;
   const bt = pull.length ? pull.map(i=>TIER_ORDER.indexOf(i.rarity)).reduce((a,b)=>Math.min(a,b)) : 5;
   const tier = TIER_ORDER[bt];
@@ -245,7 +250,7 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onA
       {fx && hi && <div style={{ position:"absolute", inset:0, boxShadow:`inset 0 0 120px 30px ${accent}99, inset 0 0 40px 6px ${accent}`, pointerEvents:"none", animation:"cg-vig 1.1s ease-in-out infinite", zIndex:2 }}/>}
 
       {phase === "rolling" && (
-        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:3 }}>
+        <div onClick={onSkip} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:3, cursor:"pointer" }}>
           <div style={{ textAlign:"center" }}>
             <div className={hi ? "cg-quake" : ""} style={{ position:"relative", width:170, height:190, margin:"0 auto" }}>
               {[0,0.4,0.8].map((d,i)=>(
@@ -263,6 +268,7 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onA
             </div>
             <div style={{ marginTop:14, fontFamily:FONT_DISP, fontWeight:800, fontSize:22, color:"#fff", letterSpacing:5, textShadow:`0 0 18px ${accent}`, animation: hi?"cg-blink .35s ease-in-out infinite":"none" }}>{rainbow ? "な…なんと…！！" : hi ? "鑑定中……！？" : "鑑定中……"}</div>
             {hi && <div style={{ marginTop:6, fontFamily:FONT_UI, fontSize:12, color:accent, fontWeight:700, letterSpacing:2 }}>大物の予感…！</div>}
+            <div style={{ marginTop:14, fontFamily:FONT_UI, fontSize:11, color:"#ffffff88" }}>画面タップでスキップ</div>
           </div>
         </div>
       )}
@@ -385,6 +391,8 @@ function playCoin(on) {
   blip(A, { freq:1760, type:"triangle", t0:0, dur:0.12, gain:0.12, slideTo:2637 });
   blip(A, { freq:2637, type:"sine", t0:0.04, dur:0.18, gain:0.08 });
 }
+// 触覚フィードバック（対応端末のみ）
+function buzz(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch { /* vibrate 非対応 */ } }
 
 function Pill({ label, value, color, onAdd }) {
   return (
@@ -410,12 +418,13 @@ export default function App() {
   const [best, setBest] = useState(0);
   const [total, setTotal] = useState(0);
   const [log, setLog] = useState([]);
-  const [fx, setFx] = useState(true);
+  const [fx, setFx] = useState(() => typeof window !== "undefined" && window.matchMedia ? !window.matchMedia("(prefers-reduced-motion: reduce)").matches : true);
   const [snd, setSnd] = useState(true);
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const timer = useRef(null);
   const toastT = useRef(null);
+  const finishRef = useRef(null);
 
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
 
@@ -433,6 +442,8 @@ export default function App() {
 
   const showToast = (m) => { setToast(m); clearTimeout(toastT.current); toastT.current=setTimeout(()=>setToast(""),1600); };
   const busy = phase === "rolling" || phase === "reveal";
+  const runFinish = () => { const f = finishRef.current; if (!f) return; finishRef.current = null; clearTimeout(timer.current); f(); };
+  const skipRoll = () => { if (phase === "rolling") runFinish(); };
 
   const doRoll = (n) => {
     const cost = n === 1 ? { t:1, c:300 } : { t:10, c:2700 };
@@ -465,14 +476,15 @@ export default function App() {
       setBest(v => Math.max(v, batchBest));
       setTotal(v => v + res.reduce((s,it)=>s+(it.price||0),0));
       if (TIER_ORDER.indexOf(heroItem.rarity) <= 3) setLog(L => [{ name:heroItem.name, price:heroItem.price, rarity:heroItem.rarity }, ...L].slice(0,8));
-      setPhase("reveal"); playReveal(TIER_ORDER[bt], snd);
+      setPhase("reveal"); playReveal(TIER_ORDER[bt], snd); if (fx && bt<=3) buzz(bt<=1?[70,40,90,40,120]:bt<=2?[50,30,70]:[35]);
     };
+    finishRef.current = finish;
     if (fx) {
       setPhase("rolling");
       const suspense = bt<=1 ? 2600 : bt<=2 ? 2100 : bt<=3 ? 1800 : 1500;  // 高レアほど長くじらす
-      playRoll(snd, suspense, bt<=2);
-      clearTimeout(timer.current); timer.current = setTimeout(finish, suspense);
-    } else finish();
+      buzz(18); playRoll(snd, suspense, bt<=2);
+      clearTimeout(timer.current); timer.current = setTimeout(runFinish, suspense);
+    } else { finishRef.current = null; finish(); }
   };
   const roll = (n) => { if (!busy) doRoll(n); };
   const again = (n) => { setPull([]); setPhase("home"); doRoll(n); };
@@ -481,16 +493,18 @@ export default function App() {
 
   const obtained = Object.keys(counts).length;
   const remain = PITY - pity;
+  const canSingle = tickets >= 1 || coins >= 300;
+  const canTen = tickets >= 10 || coins >= 2700;
   const d = new Date(now); const end = new Date(d); end.setHours(24,0,0,0);
   let s = Math.max(0, Math.floor((end - d)/1000));
   const hh = String(Math.floor(s/3600)).padStart(2,"0"); const mm = String(Math.floor((s%3600)/60)).padStart(2,"0"); const ss = String(s%60).padStart(2,"0");
 
-  const shell = { width:"100%", maxWidth:460, minHeight:"100vh", margin:"0 auto", position:"relative",
+  const shell = { width:"100%", maxWidth:460, minHeight:"var(--app-h)", margin:"0 auto", position:"relative",
     background:"radial-gradient(130% 70% at 50% -6%, #533081 0%, #34194f 42%, #190d2c 100%)", boxShadow:"0 0 50px rgba(0,0,0,.5)" };
 
   if (phase === "start") {
     return (
-      <div style={{ minHeight:"100vh", background:"#0b0716", display:"flex", justifyContent:"center" }}>
+      <div style={{ minHeight:"var(--app-h)", background:"#0b0716", display:"flex", justifyContent:"center" }}>
         <style dangerouslySetInnerHTML={{ __html: css }}/>
         <div style={{ ...shell, display:"flex", flexDirection:"column" }}>
           <img src={START_IMG} alt="古銭ガチャ" onClick={() => { setPhase("home"); setTab("gacha"); }} style={{ width:"100%", height:"auto", display:"block", cursor:"pointer" }}/>
@@ -508,9 +522,9 @@ export default function App() {
   const NAV_H = 64;
 
   return (
-    <div style={{ minHeight:"100vh", background:"#0b0716", display:"flex", justifyContent:"center" }}>
+    <div style={{ minHeight:"var(--app-h)", background:"#0b0716", display:"flex", justifyContent:"center" }}>
       <style dangerouslySetInnerHTML={{ __html: css }}/>
-      <div style={{ ...shell, paddingBottom: NAV_H + 14, fontFamily:FONT_UI, color:C.txt }}>
+      <div style={{ ...shell, paddingBottom: `calc(${NAV_H + 14}px + env(safe-area-inset-bottom))`, fontFamily:FONT_UI, color:C.txt }}>
 
         <div style={{ position:"sticky", top:0, zIndex:8, padding:"10px 12px", background:"rgba(16,8,30,.82)", backdropFilter:"blur(6px)", borderBottom:`1px solid ${C.gold}33` }}>
           <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
@@ -581,12 +595,12 @@ export default function App() {
               <button className="cg-btn cg-glow" disabled={busy} onClick={() => roll(1)} style={{ position:"relative", width:200, height:200, borderRadius:"50%", border:`4px solid ${C.gold}`, cursor:"pointer",
                 background:"radial-gradient(circle at 50% 32%, #C57BFF 0%, #7A2FB0 58%, #4A1C7A 100%)", color:"#fff", fontFamily:FONT_DISP }}>
                 <div style={{ fontSize:38, fontWeight:800, letterSpacing:4, textShadow:"0 2px 8px #0007" }}>回す！</div>
-                <div style={{ fontFamily:FONT_UI, fontSize:12, marginTop:4, color:"#FCE9A8" }}>1回 鑑定 ・ チケット×1</div>
-                <div style={{ fontFamily:FONT_UI, fontSize:10, color:"#ffffffaa" }}>または コイン300</div>
+                <div style={{ fontFamily:FONT_UI, fontSize:12, marginTop:4, color: canSingle?"#FCE9A8":"#ffd2d2" }}>1回 鑑定 ・ チケット×1</div>
+                <div style={{ fontFamily:FONT_UI, fontSize:10, fontWeight: canSingle?400:700, color: canSingle?"#ffffffaa":"#ff9a9a" }}>{canSingle ? "または コイン300" : "残高不足 ・ ＋でチャージ"}</div>
               </button>
               <button className="cg-btn" disabled={busy} onClick={() => roll(10)} style={{ marginTop:14, padding:"10px 24px", borderRadius:12, border:`2px solid ${C.gold}aa`,
                 background:"rgba(0,0,0,.25)", color:C.gold, fontFamily:FONT_UI, fontWeight:900, fontSize:14, cursor:"pointer" }}>
-                10連を回す<span style={{ display:"block", fontSize:10, fontWeight:700, color:C.sub, marginTop:1 }}>チケット×10 ・ SR以上1枚確定</span>
+                10連を回す<span style={{ display:"block", fontSize:10, fontWeight:700, color: canTen?C.sub:"#ff9a9a", marginTop:1 }}>{canTen ? "チケット×10 ・ SR以上1枚確定" : "残高不足 ・ ＋でチャージ"}</span>
               </button>
             </div>
 
@@ -662,10 +676,10 @@ export default function App() {
         )}
 
         {toast && (
-          <div style={{ position:"fixed", bottom:NAV_H+18, left:"50%", transform:"translateX(-50%)", zIndex:40, background:"rgba(20,12,34,.95)", color:"#fff", border:`1px solid ${C.gold}66`, borderRadius:999, padding:"9px 18px", fontSize:12, fontWeight:700, boxShadow:"0 6px 20px rgba(0,0,0,.4)", maxWidth:"90%", textAlign:"center" }}>{toast}</div>
+          <div style={{ position:"fixed", bottom:`calc(${NAV_H+18}px + env(safe-area-inset-bottom))`, left:"50%", transform:"translateX(-50%)", zIndex:40, background:"rgba(20,12,34,.95)", color:"#fff", border:`1px solid ${C.gold}66`, borderRadius:999, padding:"9px 18px", fontSize:12, fontWeight:700, boxShadow:"0 6px 20px rgba(0,0,0,.4)", maxWidth:"90%", textAlign:"center" }}>{toast}</div>
         )}
 
-        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:460, height:NAV_H,
+        <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:460, height:`calc(${NAV_H}px + env(safe-area-inset-bottom))`, paddingBottom:"env(safe-area-inset-bottom)",
           background:"rgba(16,8,30,.96)", borderTop:`1px solid ${C.gold}44`, display:"flex", boxShadow:"0 -2px 16px rgba(0,0,0,.4)", zIndex:9 }}>
           {[["gacha","ガチャ","◎"],["book","図鑑","▦"]].map(([k,label,icon])=>(
             <button key={k} onClick={() => setTab(k)} style={{ flex:1, background:"none", border:"none", cursor:"pointer",
@@ -676,7 +690,7 @@ export default function App() {
           ))}
         </div>
 
-        <RevealOverlay phase={phase} pull={pull} comment={comment} record={record} best={best} total={total} fx={fx} snd={snd} onAgain={again} onClose={closeReveal}/>
+        <RevealOverlay phase={phase} pull={pull} comment={comment} record={record} best={best} total={total} fx={fx} snd={snd} onSkip={skipRoll} onAgain={again} onClose={closeReveal}/>
       </div>
     </div>
   );
