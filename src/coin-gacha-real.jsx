@@ -85,6 +85,9 @@ button:focus-visible{outline:3px solid #F3C969;outline-offset:2px;border-radius:
 .cg-stamp{display:inline-block;animation:cg-stamp .55s cubic-bezier(.2,1.5,.3,1) both}
 .cg-throb{animation:cg-throb .9s ease-in-out infinite}
 @keyframes cg-flip { 0%{transform:perspective(320px) rotateY(90deg);opacity:0} 55%{opacity:1} 100%{transform:perspective(320px) rotateY(0);opacity:1} }
+@keyframes cg-cutin { 0%{transform:translateX(-130%) skewX(-12deg);opacity:0} 55%{transform:translateX(3%) skewX(-12deg);opacity:1} 100%{transform:translateX(0) skewX(-12deg);opacity:1} }
+@keyframes cg-lamp { 0%,100%{opacity:.25;transform:scale(.85)} 50%{opacity:1;transform:scale(1.15)} }
+@keyframes cg-zigzag { 0%,100%{opacity:0} 8%,28%{opacity:1} 36%{opacity:0} }
 .cg-cv{content-visibility:auto;contain-intrinsic-size:auto 130px}
 `;
 
@@ -128,10 +131,10 @@ function Sparkles({ color }) {
       animation:`cg-sparkle 1.1s ease-in-out ${i*0.1}s infinite` }}/>
   ));
 }
-function Machine({ rolling }) {
+function Machine({ size = 184, rolling }) {
   const caps = [["#E2123E",60,40],["#D9A521",96,52],["#7A4FD0",130,38],["#2E84D4",78,64],["#3C6E47",116,66],["#fff",44,60],["#C9A227",150,60]];
   return (
-    <svg viewBox="0 0 220 300" width="184" height="251" style={{ maxWidth:"100%", filter:"drop-shadow(0 14px 26px rgba(0,0,0,.4))" }}>
+    <svg viewBox="0 0 220 300" width={size} height={(size*300)/220} style={{ maxWidth:"100%", filter:"drop-shadow(0 14px 26px rgba(0,0,0,.4))" }}>
       <ellipse cx="110" cy="288" rx="86" ry="10" fill="#000" opacity="0.25"/>
       <path d="M30 120 A80 80 0 0 1 190 120 Z" fill="#BFE3F2" opacity="0.55"/>
       <path d="M30 120 A80 80 0 0 1 190 120" fill="none" stroke="#8FB9CC" strokeWidth="3"/>
@@ -269,29 +272,49 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onS
       {fx && <Rays color={accent}/>}
       {fx && hi && <div style={{ position:"absolute", inset:0, boxShadow:`inset 0 0 120px 30px ${accent}99, inset 0 0 40px 6px ${accent}`, pointerEvents:"none", animation:"cg-vig 1.1s ease-in-out infinite", zIndex:2 }}/>}
 
-      {phase === "rolling" && (
-        <div onClick={onSkip} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:3, cursor:"pointer" }}>
+      {phase === "rolling" && (() => {
+        // パチンコ式の段階演出: 0=通常(青) 1=チャンス(緑) 2=激アツ(赤) 3=超激アツ(金虹)
+        const stage = bt<=1 ? 3 : bt<=2 ? 2 : bt<=3 ? 1 : 0;
+        const lampC = ["#4FA8E8","#7CFF8A","#FF3B5C","#FFD24D"][stage];
+        const cutin = stage>=1 ? ["","リーチ！","激アツ！！","超・激・アツ！！！"][stage] : null;
+        return (
+        <div onClick={onSkip} style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", zIndex:3, cursor:"pointer", overflow:"hidden" }}>
+          {stage>=2 && ["8%","78%","20%","68%"].map((left,i)=>(
+            <span key={i} style={{ position:"absolute", left, top:`${12+i*18}%`, fontSize:34, animation:`cg-zigzag 1.1s linear ${i*0.27}s infinite`, filter:`drop-shadow(0 0 8px ${lampC})`, pointerEvents:"none" }}>⚡</span>
+          ))}
           <div style={{ textAlign:"center" }}>
             <div className={hi ? "cg-quake" : ""} style={{ position:"relative", width:170, height:190, margin:"0 auto" }}>
               {[0,0.4,0.8].map((d,i)=>(
-                <div key={i} style={{ position:"absolute", top:20, left:10, right:10, bottom:20, borderRadius:"50%", border:`3px solid ${accent}`, animation:`cg-ring 1.2s ease-out ${d}s infinite`, pointerEvents:"none" }}/>
+                <div key={i} style={{ position:"absolute", top:20, left:10, right:10, bottom:20, borderRadius:"50%", border:`3px solid ${lampC}`, animation:`cg-ring 1.2s ease-out ${d}s infinite`, pointerEvents:"none" }}/>
               ))}
-              <div style={{ position:"absolute", top:14, left:10, right:10, bottom:14, borderRadius:"50%", background:`radial-gradient(circle at 50% 42%, ${accent}, ${accent}00 70%)`, filter:"blur(8px)", animation:"cg-pulse 1s ease-in-out infinite" }}/>
+              <div style={{ position:"absolute", top:14, left:10, right:10, bottom:14, borderRadius:"50%", background:`radial-gradient(circle at 50% 42%, ${lampC}, ${lampC}00 70%)`, filter:"blur(8px)", animation:`cg-pulse ${stage>=2?0.55:1}s ease-in-out infinite` }}/>
               <svg viewBox="0 0 100 100" width="150" height="150" style={{ position:"relative", margin:"20px auto 0", display:"block", animation: hi?"cg-throb .5s ease-in-out infinite":"cg-bob 1.1s ease-in-out infinite" }}>
                 <defs><clipPath id="cgcap2"><circle cx="50" cy="50" r="40"/></clipPath></defs>
                 <circle cx="50" cy="50" r="40" fill="#f5f5f5"/>
-                <rect x="10" y="10" width="80" height="40" fill={accent} clipPath="url(#cgcap2)"/>
+                <rect x="10" y="10" width="80" height="40" fill={lampC} clipPath="url(#cgcap2)"/>
                 <circle cx="50" cy="50" r="40" fill="none" stroke="#fff" strokeOpacity=".8" strokeWidth="2"/>
                 <ellipse cx="38" cy="34" rx="9" ry="6" fill="#ffffff88"/>
-                <circle cx="50" cy="50" r="9" fill="#fff" stroke={accent} strokeWidth="3"/>
+                <circle cx="50" cy="50" r="9" fill="#fff" stroke={lampC} strokeWidth="3"/>
               </svg>
             </div>
-            <div style={{ marginTop:14, fontFamily:FONT_DISP, fontWeight:800, fontSize:22, color:"#fff", letterSpacing:5, textShadow:`0 0 18px ${accent}`, animation: hi?"cg-blink .35s ease-in-out infinite":"none" }}>{rainbow ? "な…なんと…！！" : hi ? "鑑定中……！？" : "鑑定中……"}</div>
-            {hi && <div style={{ marginTop:6, fontFamily:FONT_UI, fontSize:12, color:accent, fontWeight:700, letterSpacing:2 }}>大物の予感…！</div>}
-            <div style={{ marginTop:14, fontFamily:FONT_UI, fontSize:11, color:"#ffffff88" }}>画面タップでスキップ</div>
+            <div style={{ marginTop:12, fontFamily:FONT_DISP, fontWeight:800, fontSize:22, color:"#fff", letterSpacing:5, textShadow:`0 0 18px ${lampC}`, animation: hi?"cg-blink .35s ease-in-out infinite":"none" }}>{stage===3 ? "な…なんと…！！" : hi ? "鑑定中……！？" : "鑑定中……"}</div>
+            <div style={{ marginTop:10, display:"flex", justifyContent:"center", gap:10 }}>
+              {[0,1,2,3].map(i=>(
+                <span key={i} style={{ width:13, height:13, borderRadius:"50%", background: i<=stage ? lampC : "rgba(255,255,255,.15)", boxShadow: i<=stage ? `0 0 10px ${lampC}` : "none", animation: i<=stage ? `cg-lamp .8s ease-in-out ${i*0.15}s infinite` : "none" }}/>
+              ))}
+            </div>
+            <div style={{ marginTop:12, fontFamily:FONT_UI, fontSize:11, color:"#ffffff88" }}>画面タップでスキップ</div>
           </div>
+          {cutin && (
+            <div style={{ position:"absolute", left:"-4%", right:"-4%", top:"56%", animation:"cg-cutin .4s cubic-bezier(.2,1.2,.4,1) .75s both", pointerEvents:"none" }}>
+              <div style={{ background: stage===3 ? "linear-gradient(90deg,#ff004c,#ff9a00,#faff00,#33ff5e,#00e5ff,#7a5cff)" : `linear-gradient(90deg, ${lampC}dd, ${lampC}, ${lampC}dd)`, borderTop:"3px solid #fff", borderBottom:"3px solid #fff", padding:"10px 0", textAlign:"center", boxShadow:`0 0 40px ${lampC}` }}>
+                <span style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize: stage===3?34:30, color:"#fff", letterSpacing:6, WebkitTextStroke:"1.5px #00000066", textShadow:"0 2px 0 #0008, 0 0 24px #fff" }}>{cutin}</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       {phase === "reveal" && (
         <div style={{ position:"absolute", inset:0, overflowY:"auto" }}>
@@ -385,6 +408,8 @@ function playRoll(on, ms, hi) {
   let t = 0, gap = 0.12;
   while (t < dur - 0.05) { noise(A, { t0:t, dur:0.05, gain:0.10, hp:1200 }, rollVoices); t += gap; gap = Math.max(0.035, gap*0.93); }
   if (hi) { blip(A, { freq:70, type:"sine", t0:dur*0.55, dur:0.18, gain:0.22 }, rollVoices); blip(A, { freq:70, type:"sine", t0:dur*0.78, dur:0.2, gain:0.26 }, rollVoices); }
+  // カットイン（リーチ/激アツ）のホーン。SR以上（溜め1.7s以上）で表示タイミングに同期
+  if (ms >= 1700) { blip(A, { freq:392, type:"sawtooth", t0:0.75, dur:0.45, gain:0.2, slideTo:784 }, rollVoices); blip(A, { freq:588, type:"square", t0:0.78, dur:0.4, gain:0.08, slideTo:1175 }, rollVoices); }
 }
 // 開封の一撃＋ファンファーレ（レア度でスケール）
 function playReveal(tier, on) {
@@ -485,11 +510,6 @@ export default function App() {
     if (bookSort === "price") list = [...list].sort((a,b)=> (b.price==null?Infinity:b.price) - (a.price==null?Infinity:a.price));
     return list;
   }, [sorted, bookFilter, bookSort, counts]);
-  const featured = useMemo(() => {
-    const ms = ITEMS.filter(i=>i.rarity==="MASTER").slice(0,3);
-    const pr = ITEMS.filter(i=>i.price!=null).sort((a,b)=>b.price-a.price).slice(0,6);
-    return [...ms, ...pr];
-  }, []);
 
   const draw = (allowed) => { const av=allowed.filter(t=>byTier[t]&&byTier[t].length); const tot=av.reduce((s,t)=>s+RARITY[t].weight,0); let r=Math.random()*tot, tier=av[av.length-1]; for(const t of av){ if(r<RARITY[t].weight){tier=t;break;} r-=RARITY[t].weight; } const pool=byTier[tier]; return pool[Math.floor(Math.random()*pool.length)]; };
   const drawOne = () => draw(TIER_ORDER);
@@ -601,16 +621,6 @@ export default function App() {
 
         {tab === "gacha" && (
           <div style={{ padding:"12px 14px 6px" }}>
-            <div style={{ display:"flex", gap:8, alignItems:"stretch", marginBottom:10 }}>
-              <div style={{ flex:1, borderRadius:12, padding:"8px 12px", background:"linear-gradient(135deg,#7A2FB0,#4A1C7A)", border:`1px solid ${C.gold}55`, display:"flex", alignItems:"center" }}>
-                <span style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:14, color:"#fff", lineHeight:1.3, textShadow:"0 1px 4px #0007" }}>価値ある一枚を、<br/>その手に！</span>
-              </div>
-              <div style={{ flex:"0 0 auto", borderRadius:12, padding:"6px 12px", background:"radial-gradient(circle at 50% 0%, #3a2a08, #1c1405)", border:`1px solid ${C.gold}`, textAlign:"center", display:"flex", flexDirection:"column", justifyContent:"center" }}>
-                <div style={{ fontSize:10, color:C.gold, fontWeight:800 }}>♛ 本日の大当たり</div>
-                <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:15, color:"#fff", fontVariantNumeric:"tabular-nums" }}>残り {hh}:{mm}:{ss}</div>
-              </div>
-            </div>
-
             {log.length > 0 && (
               <div className="cg-scroll" style={{ overflow:"hidden", borderRadius:999, background:"rgba(0,0,0,.25)", border:`1px solid ${C.gold}22`, padding:"5px 0", marginBottom:10 }}>
                 <div style={{ display:"flex", whiteSpace:"nowrap", animation:"cg-marq 18s linear infinite", width:"max-content" }}>
@@ -623,31 +633,36 @@ export default function App() {
               </div>
             )}
 
-            <div style={{ display:"flex", gap:8, alignItems:"flex-start", marginTop:2 }}>
-              <div style={{ position:"relative", flex:"1 1 0", minWidth:0, display:"flex", flexDirection:"column", alignItems:"center" }}>
-                <div style={{ position:"absolute", left:0, top:6, display:"flex", flexDirection:"column", gap:6, zIndex:2 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"30px minmax(0,1fr) 106px", gap:8, alignItems:"start", marginTop:2 }}>
+              <div style={{ writingMode:"vertical-rl", fontFamily:FONT_DISP, fontWeight:800, fontSize:14, letterSpacing:4, color:"#fff", background:"linear-gradient(180deg,#7A2FB0,#4A1C7A)", border:`1px solid ${C.gold}66`, borderRadius:8, padding:"12px 4px", justifySelf:"start", textShadow:"0 1px 4px #0008", boxShadow:"0 4px 12px #0006" }}>価値ある一枚を、その手に！</div>
+              <div style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", minWidth:0 }}>
+                <div style={{ position:"absolute", left:-2, top:118, display:"flex", flexDirection:"column", gap:6, zIndex:2 }}>
                   <span style={{ fontSize:9, fontWeight:900, color:"#fff", background:"rgba(20,12,34,.92)", border:`1px solid ${RARITY.SSR.color}`, borderRadius:8, padding:"3px 6px", lineHeight:1.2, textAlign:"center", boxShadow:`0 0 8px ${RARITY.SSR.color}66` }}>初回限定<br/>SSR確定！</span>
                   <span style={{ fontSize:9, fontWeight:900, color:"#fff", background:"rgba(20,12,34,.92)", border:`1px solid ${RARITY.SR.color}`, borderRadius:8, padding:"3px 6px", lineHeight:1.2, textAlign:"center", boxShadow:`0 0 8px ${RARITY.SR.color}66` }}>10連で<br/>SR以上確定</span>
                 </div>
-                <div style={{ position:"absolute", top:28, width:170, height:170, borderRadius:"50%", background:"radial-gradient(circle, #B06CFF44 0%, transparent 65%)", pointerEvents:"none" }}/>
-                <div style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize:11, letterSpacing:3, color:"#fff", background:"linear-gradient(90deg,#7A4FD0,#B06CFF)", borderRadius:999, padding:"2px 14px", marginBottom:2, boxShadow:"0 2px 8px #0006", zIndex:1 }}>KOSEN GACHA</div>
-                <Machine/>
+                <div style={{ position:"absolute", top:34, width:190, height:190, borderRadius:"50%", background:"radial-gradient(circle, #B06CFF55 0%, transparent 65%)", pointerEvents:"none" }}/>
+                <div style={{ position:"relative", zIndex:2, fontFamily:FONT_DISP, fontWeight:800, fontSize:11, letterSpacing:3, color:"#fff", background:"linear-gradient(90deg,#7A4FD0,#B06CFF)", border:"1px solid #ffffff55", borderRadius:999, padding:"3px 16px", marginBottom:3, boxShadow:"0 2px 8px #0006", whiteSpace:"nowrap" }}>KOSEN GACHA</div>
+                <Machine size={206}/>
               </div>
-              <div style={{ flex:"0 0 116px" }}>
-                <div style={{ fontSize:11, color:C.sub, fontWeight:700, marginBottom:4 }}>注目のレア古銭</div>
+              <div style={{ minWidth:0 }}>
+                <div style={{ borderRadius:10, padding:"5px 8px", background:"radial-gradient(circle at 50% 0%, #3a2a08, #1c1405)", border:`1px solid ${C.gold}`, textAlign:"center", marginBottom:8 }}>
+                  <div style={{ fontSize:9, color:C.gold, fontWeight:800, whiteSpace:"nowrap" }}>♛ 本日の大当たり</div>
+                  <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:13, color:"#fff", fontVariantNumeric:"tabular-nums" }}>残り {hh}:{mm}:{ss}</div>
+                </div>
+                <div style={{ fontSize:10, color:C.sub, fontWeight:700, marginBottom:4, whiteSpace:"nowrap" }}>注目のレア古銭</div>
                 <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                  {featured.filter(it=>it.price!=null).slice(0,3).map(it=>{ const r=RARITY[it.rarity]; return (
-                    <div key={it.id} style={{ display:"flex", alignItems:"center", gap:6, background:"#fff", borderRadius:10, border:`2px solid ${r.color}`, padding:"4px 5px", boxShadow:`0 2px 8px ${r.color}44` }}>
-                      <div style={{ flex:"0 0 30px", height:30, display:"flex", alignItems:"center", justifyContent:"center", background:r.soft, borderRadius:6 }}><Art item={it} size={it.type==="note"?46:26}/></div>
-                      <div style={{ flex:1, minWidth:0 }}>
+                  {["SSR","SR","R"].map(t => byTier[t].filter(i=>i.price!=null).sort((a,b)=>b.price-a.price)[0]).filter(Boolean).map(it=>{ const r=RARITY[it.rarity]; return (
+                    <div key={it.id} style={{ background:"#fff", borderRadius:10, border:`2px solid ${r.color}`, padding:"4px 6px", boxShadow:`0 2px 8px ${r.color}44`, minWidth:0, overflow:"hidden" }}>
+                      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:4 }}>
                         <RarityBadge tier={it.rarity} small/>
-                        <div style={{ fontFamily:FONT_DISP, fontWeight:700, fontSize:9, color:C.ink, lineHeight:1.1, marginTop:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{it.name}</div>
-                        <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:10, color:r.color }}>{yen(it.price)}</div>
+                        <div style={{ flex:"0 0 26px", height:26, display:"flex", alignItems:"center", justifyContent:"center" }}><Art item={it} size={it.type==="note"?40:24}/></div>
                       </div>
+                      <div style={{ fontFamily:FONT_DISP, fontWeight:700, fontSize:9, color:C.ink, lineHeight:1.15, marginTop:2, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{it.name}</div>
+                      <div style={{ fontFamily:FONT_UI, fontWeight:900, fontSize:10.5, color:r.color }}>{yen(it.price)}</div>
                     </div>
                   ); })}
                 </div>
-                <button onClick={()=>setTab("book")} style={{ marginTop:6, width:"100%", background:"none", border:"none", color:C.gold, fontSize:11, fontWeight:700, cursor:"pointer", textAlign:"right" }}>一覧を見る →</button>
+                <button onClick={()=>setTab("book")} style={{ marginTop:5, width:"100%", background:"none", border:"none", color:C.gold, fontSize:10.5, fontWeight:700, cursor:"pointer", textAlign:"right", whiteSpace:"nowrap" }}>一覧を見る →</button>
               </div>
             </div>
 
