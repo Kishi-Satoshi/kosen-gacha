@@ -30,6 +30,13 @@ const C = { ink:"#1C2433", gold:"#F3C969", txt:"#F4ECDA", sub:"#C7B8DC", mag:"#B
 const FONT_DISP = "'Shippori Mincho', serif";
 const FONT_UI = "'Zen Maru Gothic', sans-serif";
 
+// コレクション・実績を端末に保存（localStorage）。使えない環境でも落ちないよう try/catch。
+const SAVE_KEY = "kosen-gacha:v1";
+function loadSave() {
+  try { const raw = localStorage.getItem(SAVE_KEY); return raw ? JSON.parse(raw) : null; }
+  catch { return null; }
+}
+
 const APPR = {
   MASTER: ["……ことばが出ません。本物の大判です。", "鑑定額、つけられません。", "これは、博物館級ですぞ……。"],
   LEGEND: ["こ、これは……正真正銘の本物！", "震えが止まりません……。", "大変なものが出ましたよ！"],
@@ -475,23 +482,32 @@ function ToggleRow({ label, on, onToggle }) {
 }
 
 export default function App() {
+  // 保存データを一度だけ読み込み、現行 ITEMS に存在する id だけ復元（収集数の不整合を防ぐ）
+  const SAVED = useMemo(() => {
+    const s = loadSave() || {};
+    const valid = new Set(ITEMS.map(i => i.id));
+    const counts = {};
+    if (s.counts) for (const [id, n] of Object.entries(s.counts)) if (valid.has(id) && n > 0) counts[id] = n;
+    const newIds = Array.isArray(s.newIds) ? s.newIds.filter(id => valid.has(id)) : [];
+    return { counts, best: s.best || 0, total: s.total || 0, newIds };
+  }, []);
   const [phase, setPhase] = useState("start");   // start | home | rolling | reveal
   const [tab, setTab] = useState("gacha");        // gacha | book
   const [pull, setPull] = useState([]);
   const [comment, setComment] = useState("");
   const [record, setRecord] = useState(false);
-  const [counts, setCounts] = useState({});
+  const [counts, setCounts] = useState(() => SAVED.counts);
   const [coins, setCoins] = useState(5000);
   const [tickets, setTickets] = useState(10);
   const [pity, setPity] = useState(0);
-  const [best, setBest] = useState(0);
-  const [total, setTotal] = useState(0);
+  const [best, setBest] = useState(() => SAVED.best);
+  const [total, setTotal] = useState(() => SAVED.total);
   const [log, setLog] = useState([]);
   const [fx, setFx] = useState(() => typeof window !== "undefined" && window.matchMedia ? !window.matchMedia("(prefers-reduced-motion: reduce)").matches : true);
   const [snd, setSnd] = useState(true);
   const [bookSort, setBookSort] = useState("rarity"); // rarity | price
   const [bookFilter, setBookFilter] = useState("all"); // all | owned | <tier>
-  const [newIds, setNewIds] = useState(() => new Set());
+  const [newIds, setNewIds] = useState(() => new Set(SAVED.newIds));
   const [toast, setToast] = useState("");
   const [now, setNow] = useState(() => Date.now());
   const timer = useRef(null);
@@ -499,6 +515,12 @@ export default function App() {
   const finishRef = useRef(null);
 
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
+
+  // コレクション・実績の変化を保存（newIds は配列化）
+  useEffect(() => {
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v:1, counts, best, total, newIds:[...newIds] })); }
+    catch { /* 保存不可環境は無視 */ }
+  }, [counts, best, total, newIds]);
 
   const byTier = useMemo(() => { const m={MASTER:[],LEGEND:[],SSR:[],SR:[],R:[],N:[]}; ITEMS.forEach(it=>m[it.rarity].push(it)); return m; }, []);
   const rates = useMemo(() => { const av=TIER_ORDER.filter(t=>byTier[t].length); const tot=av.reduce((s,t)=>s+RARITY[t].weight,0); return av.map(t=>({t,pct:RARITY[t].weight/tot*100})); }, [byTier]);
@@ -565,7 +587,7 @@ export default function App() {
   const roll = (n) => { if (!busy) doRoll(n); };
   const again = (n) => { setPull([]); setPhase("home"); doRoll(n); };
   const closeReveal = () => { setPull([]); setPhase("home"); };
-  const resetAll = () => { setCounts({}); setBest(0); setTotal(0); setLog([]); setPity(0); setPull([]); setNewIds(new Set()); setPhase("home"); };
+  const resetAll = () => { try { localStorage.removeItem(SAVE_KEY); } catch { /* noop */ } setCounts({}); setBest(0); setTotal(0); setLog([]); setPity(0); setPull([]); setNewIds(new Set()); setPhase("home"); };
 
   const obtained = Object.keys(counts).length;
   const remain = PITY - pity;
