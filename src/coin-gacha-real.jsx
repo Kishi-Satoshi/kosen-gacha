@@ -114,6 +114,10 @@ button:focus-visible{outline:3px solid #F3C969;outline-offset:2px;border-radius:
 @keyframes cg-fadeup { 0%{opacity:0;transform:translateY(20px)} 100%{opacity:1;transform:translateY(0)} }
 @keyframes cg-gaugemove { 0%{background-position:0 0} 100%{background-position:38px 0} }
 @keyframes cg-rimflare { 0%,100%{opacity:.45;filter:blur(2px)} 50%{opacity:1;filter:blur(0)} }
+@keyframes cg-deal { 0%{transform:translate(var(--dx,0),var(--dy,-60px)) scale(.3) rotate(var(--dr,0));opacity:0} 60%{opacity:1} 100%{transform:translate(0,0) scale(1) rotate(0);opacity:1} }
+@keyframes cg-burst { 0%{transform:translate(-50%,-50%) scale(.2);opacity:.95} 100%{transform:translate(-50%,-50%) scale(2.6);opacity:0} }
+@keyframes cg-orbspit { 0%{transform:scale(1)} 70%{transform:scale(1.25);filter:brightness(1.5)} 100%{transform:scale(0);opacity:0} }
+.cg-deal{animation:cg-deal .5s cubic-bezier(.2,1.2,.35,1) both}
 .cg-mfloat{animation:cg-mfloat 4.4s ease-in-out infinite;transform-origin:center bottom}
 .cg-cap-anim{animation:cg-cap .7s ease-in-out infinite}
 .cg-fadeup{animation:cg-fadeup .7s cubic-bezier(.2,.9,.3,1) both}
@@ -372,7 +376,7 @@ function CountUp({ to, dur, snd }) {
   return <>{yen(v)}</>;
 }
 
-function CeremonyCard({ item, comment, fx, snd, big }) {
+function CeremonyCard({ item, comment, fx, snd, big, noArt }) {
   const accent = ACCENT[item.rarity];
   const master = item.rarity === "MASTER";
   const idx = TIER_ORDER.indexOf(item.rarity);
@@ -381,6 +385,7 @@ function CeremonyCard({ item, comment, fx, snd, big }) {
   return (
     <div style={{ width:"100%", maxWidth:W, textAlign:"center", position:"relative" }}>
       <div style={{ marginBottom:8 }}><RarityBadge tier={item.rarity}/></div>
+      {!noArt && (
       <div className="cg-pop" style={{ position:"relative", margin:"0 auto", borderRadius:18, padding: big?"18px 14px":"12px 10px",
         background: master ? "radial-gradient(120% 120% at 50% 28%, #3a2a08, #140d03)" : "radial-gradient(120% 120% at 50% 28%, #2a2342, #140f24)",
         border:`2px solid ${accent}`, boxShadow:`0 0 34px ${accent}66, inset 0 0 30px #00000066` }}>
@@ -389,6 +394,7 @@ function CeremonyCard({ item, comment, fx, snd, big }) {
           <Art item={item} size={item.type==="note" ? (big?224:150) : (big?168:108)}/>
         </div>
       </div>
+      )}
       <div className="cg-up" style={{ marginTop:12, fontFamily:FONT_DISP, fontWeight:700, fontSize: big?15:13, color:"#fff", textShadow:"0 1px 6px #000a", animationDelay:".15s" }}>
         「{comment}」<span style={{ fontSize:11, color:"#ffffff99", marginLeft:4 }}>― 鑑定士</span>
       </div>
@@ -404,20 +410,138 @@ function CeremonyCard({ item, comment, fx, snd, big }) {
   );
 }
 
-// 10連の結果を1枚ずつ順番にめくる演出
-function FlipGrid({ pull, fx, snd }) {
-  useEffect(() => {
-    if (!fx) return;
-    const ids = pull.map((it,i)=> setTimeout(()=> playFlip(snd, it.rarity), 120 + i*150));
-    return () => ids.forEach(clearTimeout);
-  }, [pull, fx, snd]);
+// トレカ風の裏面（和同開珎モチーフ＝古銭ガチャの紋）
+function CardBack({ big }) {
   return (
-    <div onClick={(e)=>e.stopPropagation()} className="cg-scroll" style={{ marginTop:14, display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6, width:"100%", maxWidth:360 }}>
-      {pull.map((it,i)=>(
-        <div key={i} style={{ aspectRatio:"1/1", borderRadius:8, border:`2px solid ${RARITY[it.rarity].color}`, background:RARITY[it.rarity].soft, display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden", padding:3, boxShadow: TIER_ORDER.indexOf(it.rarity)<=3 ? `0 0 10px ${RARITY[it.rarity].color}` : "none", animation: fx ? `cg-flip .5s ease ${120 + i*150}ms both` : "none" }}>
-          <Art item={it} size={42}/>
+    <div className="cg-sheen-wrap" style={{ width:"100%", height:"100%", borderRadius:big?16:9,
+      background:"radial-gradient(120% 120% at 50% 22%, #3b2c62, #1b1334 68%, #120c22)",
+      border:`${big?2:1.5}px solid ${C.gold}`, boxShadow:`0 0 ${big?18:7}px ${C.gold}55, inset 0 0 18px #00000088`,
+      display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+      <svg viewBox="0 0 100 100" width={big?"66%":"78%"} height={big?"66%":"78%"} style={{ display:"block" }} aria-hidden="true">
+        <defs>
+          <radialGradient id="cg-backgold" cx="50%" cy="40%" r="62%">
+            <stop offset="0%" stopColor="#FCEBB0"/><stop offset="52%" stopColor="#E7C766"/><stop offset="100%" stopColor="#9c7616"/>
+          </radialGradient>
+        </defs>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#cg-backgold)" strokeWidth="5.5"/>
+        <circle cx="50" cy="50" r="31" fill="none" stroke="url(#cg-backgold)" strokeWidth="1.6" strokeOpacity="0.7"/>
+        <rect x="41" y="41" width="18" height="18" fill="none" stroke="url(#cg-backgold)" strokeWidth="4.5"/>
+        <text x="50" y="22" textAnchor="middle" dominantBaseline="middle" fontFamily={FONT_DISP} fontWeight="800" fontSize="11" fill="url(#cg-backgold)">古</text>
+        <text x="50" y="78" textAnchor="middle" dominantBaseline="middle" fontFamily={FONT_DISP} fontWeight="800" fontSize="11" fill="url(#cg-backgold)">銭</text>
+      </svg>
+    </div>
+  );
+}
+
+// 1枚のカード：裏向き→タップで3Dフリップして古銭を公開
+function CardFlip({ item, flipped, onFlip, big, fx }) {
+  const accent = ACCENT[item.rarity];
+  const idx = TIER_ORDER.indexOf(item.rarity);
+  const hi = idx <= 3; // SR以上は光バースト
+  const master = item.rarity === "MASTER";
+  return (
+    <div role="button" tabIndex={flipped ? -1 : 0}
+      aria-label={flipped ? `${item.name}（${RARITY[item.rarity].en}）` : "裏向きのカード。タップしてめくる"}
+      onClick={(e)=>{ e.stopPropagation(); if (!flipped) onFlip(); }}
+      onKeyDown={(e)=>{ if (!flipped && (e.key==="Enter"||e.key===" ")) { e.preventDefault(); onFlip(); } }}
+      style={{ position:"relative", width:"100%", height:"100%", cursor: flipped?"default":"pointer", perspective:900, WebkitTapHighlightColor:"transparent" }}>
+      {fx && flipped && hi && <span style={{ position:"absolute", left:"50%", top:"50%", width:"150%", height:"150%", borderRadius:"50%", background:`radial-gradient(circle, ${accent}cc, ${accent}00 68%)`, animation:"cg-burst .7s ease-out forwards", pointerEvents:"none", zIndex:0 }}/>}
+      <div style={{ position:"relative", width:"100%", height:"100%", transformStyle:"preserve-3d", transition:"transform .55s cubic-bezier(.2,.9,.3,1)", transform: flipped?"rotateY(180deg)":"rotateY(0deg)", zIndex:1 }}>
+        <div style={{ position:"absolute", inset:0, backfaceVisibility:"hidden", WebkitBackfaceVisibility:"hidden" }}><CardBack big={big}/></div>
+        <div style={{ position:"absolute", inset:0, backfaceVisibility:"hidden", WebkitBackfaceVisibility:"hidden", transform:"rotateY(180deg)",
+          borderRadius:big?16:9, padding: big?10:4,
+          background: master ? "radial-gradient(120% 120% at 50% 26%, #3a2a08, #140d03)" : "radial-gradient(120% 120% at 50% 26%, #2a2342, #140f24)",
+          border:`${big?2:1.5}px solid ${accent}`, boxShadow:`0 0 ${big?26:9}px ${accent}${hi?"aa":"44"}, inset 0 0 18px #00000066`,
+          display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" }}>
+          {fx && big && (master||item.rarity==="LEGEND"||item.rarity==="SSR") && <Sparkles color={accent}/>}
+          <Art item={item} size={big ? (item.type==="note"?178:140) : 40}/>
+          {big && <span style={{ position:"absolute", top:7, left:7 }}><RarityBadge tier={item.rarity} small/></span>}
         </div>
-      ))}
+      </div>
+    </div>
+  );
+}
+
+// リザルト統括：裏向きカードを配り、タップでめくって古銭を公開（トレカ系オリパ風）
+function PullReveal({ pull, comment, record, best, total, fx, snd, bt, tier, accent, rainbow, hi, heroItem, single, stampLabel, onAgain, onClose }) {
+  const heroIdx = pull.indexOf(heroItem);
+  const [flipped, setFlipped] = useState(() => fx ? new Set() : new Set(pull.map((_,i)=>i)));
+  const allFlipped = flipped.size >= pull.length;
+  const heroFlipped = flipped.has(heroIdx);
+  const celebrate = hi && heroFlipped;
+
+  // 最高レアがめくられた瞬間にファンファーレ＋強振動（1回だけ）
+  useEffect(() => {
+    if (!heroFlipped) return;
+    playReveal(tier, snd);
+    if (fx && bt<=3) buzz(bt<=1?[70,40,90,40,120]:bt<=2?[50,30,70]:[35]);
+  }, [heroFlipped]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const flipOne = (i) => {
+    setFlipped(prev => { if (prev.has(i)) return prev; const n = new Set(prev); n.add(i); return n; });
+    if (i !== heroIdx) { const it = pull[i]; playFlip(snd, it.rarity); const idx = TIER_ORDER.indexOf(it.rarity); if (fx && idx<=3) buzz(idx<=1?[40,20,55]:idx===2?[30]:[18]); }
+  };
+  const flipAll = () => {
+    if (!fx) { setFlipped(new Set(pull.map((_,i)=>i))); return; }
+    const remain = pull.map((_,i)=>i).filter(i=>!flipped.has(i)).sort((a,b)=> (a===heroIdx?1:0)-(b===heroIdx?1:0)); // 最高レアは最後にめくる
+    remain.forEach((i,k)=> setTimeout(()=> flipOne(i), k*140));
+  };
+
+  const done = single ? heroFlipped : allFlipped;
+  return (
+    <div onClick={done ? onClose : undefined} style={{ position:"absolute", inset:0, overflowY:"auto" }}>
+      {fx && celebrate && <div style={{ position:"absolute", inset:0, zIndex:5, pointerEvents:"none" }}><Confetti rainbow={rainbow}/><CoinRain/></div>}
+      {fx && celebrate && stampLabel && (
+        <div style={{ position:"fixed", top:"24%", left:0, right:0, textAlign:"center", zIndex:6, pointerEvents:"none" }}>
+          <span className="cg-stamp" style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize: stampLabel==="特級"?60:48, color:accent,
+            WebkitTextStroke:`2px ${rainbow?"#ffffffcc":"#00000088"}`, textShadow:`0 0 30px ${accent}, 0 0 60px ${accent}` }}>{stampLabel}!!</span>
+        </div>
+      )}
+      {fx && celebrate && <div style={{ position:"fixed", inset:0, background:"#fff", animation:"cg-flash .55s ease-out forwards", pointerEvents:"none", zIndex:8 }}/>}
+
+      <div style={{ position:"relative", zIndex:3, minHeight:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"22px 14px" }}>
+        {heroFlipped && record && (
+          <div className="cg-pop" style={{ marginBottom:10, fontFamily:FONT_DISP, fontWeight:800, fontSize:15, color:"#15110A", background:"linear-gradient(90deg,#FFE08A,#F3C969)", border:"1px solid #C9A227", borderRadius:999, padding:"5px 18px", boxShadow:"0 0 18px #F3C96988" }}>{heroItem && heroItem.rarity==="MASTER" ? "★ 特級 獲得！ ★" : "自己最高額 更新！"}</div>
+        )}
+
+        {single ? (
+          <>
+            <div onClick={(e)=>e.stopPropagation()} className="cg-deal" style={{ width:210, height:290 }}>
+              <CardFlip item={heroItem} flipped={heroFlipped} onFlip={()=>flipOne(heroIdx)} big fx={fx}/>
+            </div>
+            {!heroFlipped && <div style={{ marginTop:16, fontFamily:FONT_DISP, fontWeight:800, fontSize:17, color:"#fff", letterSpacing:3, textShadow:`0 0 16px ${accent}`, animation: fx?"cg-blink 1s ease-in-out infinite":"none" }}>タップしてめくる</div>}
+            {heroFlipped && <div className="cg-up" style={{ marginTop:14, width:"100%", display:"flex", justifyContent:"center" }}><CeremonyCard item={heroItem} comment={comment} fx={fx} snd={snd} big noArt/></div>}
+          </>
+        ) : (
+          <>
+            {allFlipped && <div style={{ marginBottom:10 }}><span style={{ fontFamily:FONT_UI, fontWeight:900, color:"#fff", fontSize:13, marginRight:8, letterSpacing:1 }}>最高レア</span><RarityBadge tier={tier}/></div>}
+            {!allFlipped && <div style={{ marginBottom:12, fontFamily:FONT_DISP, fontWeight:800, fontSize:15, color:"#fff", letterSpacing:2, textShadow:`0 0 14px ${accent}` }}>カードをめくってください</div>}
+            <div onClick={(e)=>e.stopPropagation()} className="cg-scroll" style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:7, width:"100%", maxWidth:360 }}>
+              {pull.map((it,i)=>(
+                <div key={i} className="cg-deal" style={{ aspectRatio:"3/4", animationDelay: fx?`${i*45}ms`:"0ms" }}>
+                  <CardFlip item={it} flipped={flipped.has(i)} onFlip={()=>flipOne(i)} fx={fx}/>
+                </div>
+              ))}
+            </div>
+            {!allFlipped && <button className="cg-btn" onClick={(e)=>{ e.stopPropagation(); flipAll(); }} style={{ marginTop:16, fontFamily:FONT_DISP, fontWeight:800, fontSize:16, color:"#15110A", border:"none", background:G.goldBar, padding:"11px 26px", borderRadius:999, boxShadow:"0 3px 0 #8A6014, 0 0 18px #F3C96966", cursor:"pointer", letterSpacing:2 }}>すべてめくる</button>}
+            {allFlipped && <div className="cg-up" style={{ marginTop:16, width:"100%", display:"flex", justifyContent:"center" }}><CeremonyCard item={heroItem} comment={comment} fx={fx} snd={snd}/></div>}
+          </>
+        )}
+
+        {done && (
+          <>
+            <div style={{ marginTop:16, display:"flex", gap:18, fontFamily:FONT_UI, fontSize:11, color:"#ffffffcc" }}>
+              <span>自己最高額 <b style={{ color:C.gold, fontSize:13 }}>{yen(best)}</b></span>
+              <span>累計鑑定額 <b style={{ color:C.gold, fontSize:13 }}>{yen(total)}</b></span>
+            </div>
+            <div onClick={(e)=>e.stopPropagation()} style={{ marginTop:16, display:"flex", gap:10, width:"100%", maxWidth:340 }}>
+              <button className="cg-btn" onClick={()=>onAgain(pull.length)} style={{ flex:1, fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:"#fff", border:`2px solid ${C.gold}`, background:"radial-gradient(circle at 50% 30%, #C57BFF, #7A2FB0 70%)", padding:"13px 0", borderRadius:12, boxShadow:"0 4px 0 #4A1C7A", cursor:"pointer", letterSpacing:2 }}>もう一度{pull.length>1 ? `（${pull.length}連）` : ""}</button>
+              <button className="cg-btn" onClick={onClose} style={{ flex:"0 0 96px", fontFamily:FONT_UI, fontWeight:800, fontSize:14, color:"#fff", border:"1px solid #ffffff55", background:"rgba(255,255,255,.08)", padding:"13px 0", borderRadius:12, cursor:"pointer" }}>閉じる</button>
+            </div>
+            <div style={{ marginTop:10, fontFamily:FONT_UI, fontSize:11, color:"#ffffff77" }}>背景タップでも閉じます</div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -483,40 +607,10 @@ function RevealOverlay({ phase, pull, comment, record, best, total, fx, snd, onS
         );
       })()}
 
-      {phase === "reveal" && (
-        <div style={{ position:"absolute", inset:0, overflowY:"auto" }}>
-          {fx && hi && <div style={{ position:"absolute", inset:0, zIndex:5, pointerEvents:"none" }}><Confetti rainbow={rainbow}/><CoinRain/></div>}
-          {fx && stampLabel && (
-            <div style={{ position:"fixed", top:"26%", left:0, right:0, textAlign:"center", zIndex:6, pointerEvents:"none" }}>
-              <span className="cg-stamp" style={{ fontFamily:FONT_DISP, fontWeight:800, fontSize: stampLabel==="特級"?60:48, color:accent,
-                WebkitTextStroke:`2px ${rainbow?"#ffffffcc":"#00000088"}`, textShadow:`0 0 30px ${accent}, 0 0 60px ${accent}` }}>{stampLabel}!!</span>
-            </div>
-          )}
-          {fx && hi && <div style={{ position:"fixed", inset:0, background:"#fff", animation:"cg-flash .55s ease-out forwards", pointerEvents:"none", zIndex:8 }}/>}
-          <div onClick={onClose} style={{ position:"relative", zIndex:3, minHeight:"100%", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"22px 14px" }}>
-            {record && (
-              <div className="cg-pop" style={{ marginBottom:10, fontFamily:FONT_DISP, fontWeight:800, fontSize:15, color:"#15110A", background:"linear-gradient(90deg,#FFE08A,#F3C969)", border:"1px solid #C9A227", borderRadius:999, padding:"5px 18px", boxShadow:"0 0 18px #F3C96988" }}>{heroItem && heroItem.rarity==="MASTER" ? "★ 特級 獲得！ ★" : "自己最高額 更新！"}</div>
-            )}
-            {pull.length > 1 && (
-              <div style={{ marginBottom:8 }}><span style={{ fontFamily:FONT_UI, fontWeight:900, color:"#fff", fontSize:13, marginRight:8, letterSpacing:1 }}>最高レア</span><RarityBadge tier={tier}/></div>
-            )}
-
-            <div onClick={(e)=>e.stopPropagation()} className={fx ? "cg-zoom" : ""}><CeremonyCard item={heroItem} comment={comment} fx={fx} snd={snd} big={single}/></div>
-
-            {pull.length > 1 && <FlipGrid pull={pull} fx={fx} snd={snd}/>}
-
-            <div style={{ marginTop:16, display:"flex", gap:18, fontFamily:FONT_UI, fontSize:11, color:"#ffffffcc" }}>
-              <span>自己最高額 <b style={{ color:C.gold, fontSize:13 }}>{yen(best)}</b></span>
-              <span>累計鑑定額 <b style={{ color:C.gold, fontSize:13 }}>{yen(total)}</b></span>
-            </div>
-
-            <div onClick={(e)=>e.stopPropagation()} style={{ marginTop:16, display:"flex", gap:10, width:"100%", maxWidth:340 }}>
-              <button className="cg-btn" onClick={()=>onAgain(pull.length)} style={{ flex:1, fontFamily:FONT_DISP, fontWeight:800, fontSize:18, color:"#fff", border:`2px solid ${C.gold}`, background:"radial-gradient(circle at 50% 30%, #C57BFF, #7A2FB0 70%)", padding:"13px 0", borderRadius:12, boxShadow:"0 4px 0 #4A1C7A", cursor:"pointer", letterSpacing:2 }}>もう一度{pull.length>1 ? `（${pull.length}連）` : ""}</button>
-              <button className="cg-btn" onClick={onClose} style={{ flex:"0 0 96px", fontFamily:FONT_UI, fontWeight:800, fontSize:14, color:"#fff", border:"1px solid #ffffff55", background:"rgba(255,255,255,.08)", padding:"13px 0", borderRadius:12, cursor:"pointer" }}>閉じる</button>
-            </div>
-            <div style={{ marginTop:10, fontFamily:FONT_UI, fontSize:11, color:"#ffffff77" }}>背景タップでも閉じます</div>
-          </div>
-        </div>
+      {phase === "reveal" && heroItem && (
+        <PullReveal pull={pull} comment={comment} record={record} best={best} total={total} fx={fx} snd={snd}
+          bt={bt} tier={tier} accent={accent} rainbow={rainbow} hi={hi} heroItem={heroItem} single={single}
+          stampLabel={stampLabel} onAgain={onAgain} onClose={onClose}/>
       )}
     </div>
   );
@@ -649,7 +743,8 @@ export default function App() {
     const counts = {};
     if (s.counts) for (const [id, n] of Object.entries(s.counts)) if (valid.has(id) && n > 0) counts[id] = n;
     const newIds = Array.isArray(s.newIds) ? s.newIds.filter(id => valid.has(id)) : [];
-    return { counts, best: s.best || 0, total: s.total || 0, newIds };
+    const clampInt = (v, def) => (Number.isFinite(v) && v >= 0 ? Math.floor(v) : def);
+    return { counts, best: s.best || 0, total: s.total || 0, newIds, coins: clampInt(s.coins, 5000), tickets: clampInt(s.tickets, 10) };
   }, []);
   const [phase, setPhase] = useState("start");   // start | home | rolling | reveal
   const [tab, setTab] = useState("gacha");        // gacha | book
@@ -657,8 +752,8 @@ export default function App() {
   const [comment, setComment] = useState("");
   const [record, setRecord] = useState(false);
   const [counts, setCounts] = useState(() => SAVED.counts);
-  const [coins, setCoins] = useState(5000);
-  const [tickets, setTickets] = useState(10);
+  const [coins, setCoins] = useState(() => SAVED.coins);
+  const [tickets, setTickets] = useState(() => SAVED.tickets);
   const [pity, setPity] = useState(0);
   const [best, setBest] = useState(() => SAVED.best);
   const [total, setTotal] = useState(() => SAVED.total);
@@ -676,11 +771,11 @@ export default function App() {
 
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
 
-  // コレクション・実績の変化を保存（newIds は配列化）
+  // コレクション・実績・残高の変化を保存（newIds は配列化）
   useEffect(() => {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v:1, counts, best, total, newIds:[...newIds] })); }
+    try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v:1, counts, best, total, newIds:[...newIds], coins, tickets })); }
     catch { /* 保存不可環境は無視 */ }
-  }, [counts, best, total, newIds]);
+  }, [counts, best, total, newIds, coins, tickets]);
 
   const byTier = useMemo(() => { const m={MASTER:[],LEGEND:[],SSR:[],SR:[],R:[],N:[]}; ITEMS.forEach(it=>m[it.rarity].push(it)); return m; }, []);
   const rates = useMemo(() => { const av=TIER_ORDER.filter(t=>byTier[t].length); const tot=av.reduce((s,t)=>s+RARITY[t].weight,0); return av.map(t=>({t,pct:RARITY[t].weight/tot*100})); }, [byTier]);
@@ -734,7 +829,7 @@ export default function App() {
       setBest(v => Math.max(v, batchBest));
       setTotal(v => v + res.reduce((s,it)=>s+(it.price||0),0));
       if (TIER_ORDER.indexOf(heroItem.rarity) <= 3) setLog(L => [{ name:heroItem.name, price:heroItem.price, rarity:heroItem.rarity }, ...L].slice(0,8));
-      setPhase("reveal"); playReveal(TIER_ORDER[bt], snd); if (fx && bt<=3) buzz(bt<=1?[70,40,90,40,120]:bt<=2?[50,30,70]:[35]);
+      setPhase("reveal"); // ファンファーレ/祝祭は PullReveal が最高レアめくり時に発火
     };
     finishRef.current = finish;
     if (fx) {
@@ -747,7 +842,7 @@ export default function App() {
   const roll = (n) => { if (!busy) doRoll(n); };
   const again = (n) => { setPull([]); setPhase("home"); doRoll(n); };
   const closeReveal = () => { setPull([]); setPhase("home"); };
-  const resetAll = () => { try { localStorage.removeItem(SAVE_KEY); } catch { /* noop */ } setCounts({}); setBest(0); setTotal(0); setLog([]); setPity(0); setPull([]); setNewIds(new Set()); setPhase("home"); };
+  const resetAll = () => { try { localStorage.removeItem(SAVE_KEY); } catch { /* noop */ } setCounts({}); setBest(0); setTotal(0); setLog([]); setPity(0); setPull([]); setNewIds(new Set()); setCoins(5000); setTickets(10); setPhase("home"); };
 
   const obtained = Object.keys(counts).length;
   const remain = PITY - pity;
